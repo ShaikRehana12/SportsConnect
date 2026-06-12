@@ -1,106 +1,139 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Ensure you have installed axios: npm install axios
+import axios from "axios";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      // 1. Send login request to your Node.js/Express backend
-      // Replace the URL with your actual backend endpoint
       const response = await axios.post("http://localhost:5000/api/auth/login", {
         email,
         password,
       });
 
-      // 2. Destructure the data returned from your MongoDB/Backend
-      const { name, role, token, interests } = response.data;
+      const { username, role, token, interests, city } = response.data;
 
-      // 3. Save data to localStorage
-      localStorage.setItem("token", token); // Useful for protected routes
-      localStorage.setItem("userName", name);
-      localStorage.setItem("userRole", role); // 'admin' or 'user'
-      localStorage.setItem("userInterests", JSON.stringify(interests));
+      localStorage.setItem("token", token);
+      localStorage.setItem("userName", username);
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userCity", city || "Hyderabad");
+      localStorage.setItem("userInterests", JSON.stringify(interests || []));
 
-      // 4. Notify Navbar to update the "Hi, Name" display immediately
       window.dispatchEvent(new Event("storage"));
 
-      // 5. SMART REDIRECT based on Role
       if (role === "admin") {
-        console.log("Admin Logged In");
-        navigate("/admin"); // Redirect to Admin Dashboard
+        navigate("/admin");
+      } else if (!interests || interests.length === 0) {
+        navigate("/select-interests");
       } else {
-        console.log("User Logged In");
-        navigate("/dashboard"); // Redirect to User Dashboard
+        navigate("/feed");
       }
 
     } catch (error) {
-      // Handle errors from the backend (e.g., "Invalid Credentials")
       console.error("Login Error:", error);
-      alert(error.response?.data?.msg || "Login failed. Please try again.");
+      setError(
+        error.response?.data?.msg || 
+        "Login failed. Please verify your credentials."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-cyan-50 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans p-4">
       <form 
         onSubmit={handleLogin} 
-        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-cyan-600"
+        className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 relative overflow-hidden"
       >
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-black text-cyan-900 tracking-tighter italic uppercase">
-            Sports<span className="text-gray-800">Connect</span>
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
+        
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">
+            Sports<span className="text-cyan-600">Connect</span>
           </h2>
-          <p className="text-gray-500 text-xs uppercase tracking-widest font-bold mt-2">
+          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-bold mt-2">
             Secure Access Portal
           </p>
         </div>
-        
-        <div className="space-y-4">
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs font-bold rounded flex items-center justify-center">
+            {error}
+          </div>
+        )}
+        {/* // This is likely in your Login.js where you handle the axios response
+localStorage.setItem("userId", res.data.userId || res.data.user._id); */}
+        <div className="space-y-5">
           <div>
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Email Address</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Email Address</label>
             <input 
               type="email" 
-              placeholder="admin@sportsconnect.com" 
+              placeholder="player@sportsconnect.com" 
               required
-              className="w-full mt-1 p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-cyan-500 transition bg-gray-50"
+              className="w-full mt-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition-all"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Password</label>
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              required
-              className="w-full mt-1 p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-cyan-500 transition bg-gray-50"
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="flex justify-between items-center ml-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Password</label>
+              <button 
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-[11px] font-bold text-cyan-600 hover:text-cyan-700 transition italic"
+              >
+                Forgot Password?
+              </button>
+            </div>
+            <div className="relative mt-1">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                required
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition-all"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-600 transition"
+              >
+                {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
         </div>
 
         <button 
           type="submit" 
-          className="w-full bg-cyan-600 text-white py-4 rounded-xl font-bold hover:bg-cyan-700 transition shadow-lg mt-8 uppercase text-xs tracking-[0.2em]"
+          disabled={isLoading}
+          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-cyan-600 transition-all duration-300 shadow-lg shadow-slate-200 mt-10 uppercase text-xs tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          Sign In
+          {isLoading ? "Authenticating..." : "Sign In"}
         </button>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center gap-2">
-          <p className="text-xs text-gray-500">
-            Don't have an account? 
+        <div className="mt-10 pt-8 border-t border-slate-50 flex justify-center">
+          <p className="text-sm text-slate-500">
+            New player? 
             <button 
               type="button"
               onClick={() => navigate("/register")} 
-              className="ml-2 text-cyan-600 font-bold hover:underline italic"
+              className="ml-2 text-cyan-600 font-extrabold hover:text-slate-900 transition underline-offset-4 hover:underline"
             >
-              Register Now
+              Create Account
             </button>
           </p>
         </div>
