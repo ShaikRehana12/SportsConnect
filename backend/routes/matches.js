@@ -47,6 +47,7 @@ router.post("/create", upload.single("file"), async (req, res) => {
 
     // 3. AUTOMATED EMAIL NOTIFICATION DISPATCH ENGINE
     try {
+      // Find users whose city matches the event location AND their interests array contains the sport
       const interestedUsers = await User.find({
         city: location,      
         interests: sportType     
@@ -54,37 +55,61 @@ router.post("/create", upload.single("file"), async (req, res) => {
 
       if (interestedUsers.length > 0) {
         const emailList = interestedUsers.map(u => u.email).join(",");
+        console.log(`🎯 Found ${interestedUsers.length} players interested in ${sportType} in ${location}. Sending alerts...`);
 
         const mailOptions = {
-          // FIXED: Pointing cleanly to your newly authenticated dedicated email address
+          // Pointing cleanly to your newly authenticated dedicated email address
           from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>', 
           to: emailList,
-          subject: `New ${savedTournament.sportType} Match in ${savedTournament.location}!`,
+          subject: `New ${savedTournament.sportType} Match Alert in ${savedTournament.location}! 🚀`,
           html: `
-            <div style="font-family: sans-serif; border: 2px solid #0891b2; padding: 20px; border-radius: 15px; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #0891b2; text-transform: uppercase; font-style: italic;">Big News, Player! 🏀</h2>
-              <p>A new <b>${savedTournament.sportType}</b> event has been posted: <span style="font-size: 16px; font-weight: bold; color: #334155;">${savedTournament.title}</span></p>
-              <div style="background-color: #f8fafc; padding: 15px; border-radius: 10px; margin: 15px 0;">
-                <p style="margin: 5px 0;"><b>📍 Where:</b> ${savedTournament.location}</p>
-                <p style="margin: 5px 0;"><b>📅 Date:</b> ${savedTournament.date}</p>
-                <p style="margin: 5px 0;"><b>⏰ When:</b> ${savedTournament.time}</p>
-                <p style="margin: 5px 0;"><b>💰 Entry Fee:</b> ${savedTournament.entryFee > 0 ? `₹${savedTournament.entryFee}` : 'FREE'}</p>
+            <div style="font-family: sans-serif; border: 2px solid #06b6d4; padding: 25px; border-radius: 15px; max-width: 550px; margin: 0 auto; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 40px;">🏆</span>
+                <h2 style="color: #06b6d4; margin: 5px 0; text-transform: uppercase; letter-spacing: 1px;">New Event Dynamic Alert!</h2>
               </div>
+              
+              <p style="color: #334155; font-size: 16px; line-height: 1.5;">Hey Player,</p>
+              <p style="color: #334155; font-size: 15px; line-height: 1.5;">A brand new <b>${savedTournament.sportType}</b> event has been posted in your city! Check out the details below and reserve your slot before brackets fill up:</p>
+              
+              ${savedTournament.image && savedTournament.image !== 'default-sports.jpg' ? `
+              <div style="text-align: center; margin: 15px 0;">
+                <img src="${savedTournament.image}" alt="Event Banner" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 250px; object-fit: cover;" />
+              </div>
+              ` : ''}
+
+              <div style="background-color: #f8fafc; border-left: 4px solid #06b6d4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <h3 style="color: #0f172a; margin-top: 0; font-size: 18px;">${savedTournament.title}</h3>
+                <p style="margin: 6px 0; color: #475569;">📍 <b>Venue Location:</b> ${savedTournament.location}</p>
+                <p style="margin: 6px 0; color: #475569;">📅 <b>Scheduled Date:</b> ${savedTournament.date}</p>
+                <p style="margin: 6px 0; color: #475569;">⏰ <b>Timing Slot:</b> ${savedTournament.time || "TBD"}</p>
+                <p style="margin: 6px 0; color: #475569;">👥 <b>Player Cap Limit:</b> Max ${savedTournament.maxPlayers || "Unlimited"} Players</p>
+                <p style="margin: 6px 0; color: #475569;">💰 <b>Entry Fee:</b> <span style="color: #0891b2; font-weight: bold;">${savedTournament.entryFee > 0 ? `₹${savedTournament.entryFee}` : 'FREE'}</span></p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="http://localhost:3000/dashboard" 
+                   style="background-color: #06b6d4; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);">
+                   View & Register Now
+                </a>
+              </div>
+              
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="font-size: 13px; color: #64748b; text-align: center;">Open your dashboard now to join the tournament before spots fill up!</p>
+              <p style="color: #64748b; font-size: 11px; text-align: center; margin: 0;">You received this automated notification because you listed "${savedTournament.sportType}" inside your SportsConnect profile preferences for ${savedTournament.location}.</p>
+              <p style="color: #06b6d4; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px;">SportsConnect Team India</p>
             </div>
           `
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
-          if (error) console.log("Notification Email Engine Error:", error);
-          else console.log("Notifications sent out successfully to:", emailList);
+          if (error) console.log("❌ Notification Email Engine Error:", error);
+          else console.log("✅ Notifications sent out successfully to:", emailList);
         });
       } else {
-        console.log("No players found matching interests for this tournament area.");
+        console.log(`ℹ️ Tournament created, but no registered users match the target filters (${sportType} in ${location}).`);
       }
     } catch (emailQueryErr) {
-      console.error("Non-fatal Email System Exception:", emailQueryErr.message);
+      console.error("⚠️ Background notification automated query crashed:", emailQueryErr.message);
     }
 
     return res.status(201).json(savedTournament);

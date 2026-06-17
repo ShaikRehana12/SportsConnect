@@ -7,65 +7,156 @@ const transporter = require('../utils/mailer');
 // --- REGISTER ---
 router.post('/register', async (req, res) => {
     try {
+        if (!req.body || !req.body.email || !req.body.password) {
+            return res.status(400).json("Email and Password are required fields.");
+        }
+
         const { email, password, interests, city, username, role } = req.body;
 
         // 1. Check if user already exists (Normalize email to lowercase)
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
         if (existingUser) return res.status(400).json("Email already registered!");
 
         // 2. Hash the password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 3. Create user
+        // 3. Create user document structure
         const newUser = new User({
             username: username || email.split('@')[0], 
-            email: email.toLowerCase(),
+            email: email.toLowerCase().trim(),
             password: hashedPassword,
             city: city || "Hyderabad",
             interests: interests || [],
-            role: role || 'user'
+            role: role || 'user',
+            isVerified: false // Explicitly unverified until link completion
         });
 
         const user = await newUser.save();
-        res.status(201).json({ message: "Registration Successful!", user });
+
+        // 4. GENERATE AND DISPATCH INITIAL ACCOUNT VERIFICATION LINK
+        try {
+            const verificationToken = jwt.sign(
+                { userId: user._id },
+                "yourSecretKey",
+                { expiresIn: "1h" }
+            );
+
+            const verificationUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
+
+            const mailOptions = {
+                from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>',
+                to: user.email,
+                subject: "Welcome to SportsConnect! Verify Your Account 🚀",
+                html: `
+                    <div style="font-family: sans-serif; border: 2px solid #06b6d4; padding: 25px; border-radius: 15px; max-width: 550px; margin: 0 auto; background-color: #ffffff;">
+                        <h2 style="color: #06b6d4; text-align: center; text-transform: uppercase; letter-spacing: 1px;">Welcome to the Team!</h2>
+                        <p style="color: #334155; font-size: 15px; line-height: 1.5;">Hi <strong>${user.username}</strong>,</p>
+                        <p style="color: #334155; font-size: 15px; line-height: 1.5;">Thank you for registering with SportsConnect. Click the button below to instantly verify your email address and activate your match-making profile dashboard:</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${verificationUrl}" style="background-color: #06b6d4; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);">
+                                Verify Account
+                            </a>
+                        </div>
+                        
+                        <p style="color: #64748b; font-size: 12px; text-align: center;">This link remains secure and active for the next 60 minutes.</p>
+                        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                        <p style="color: #06b6d4; font-size: 13px; font-weight: bold; text-align: center; margin: 0;">SportsConnect Team India</p>
+                    </div>
+                `
+            };
+
+            transporter.sendMail(mailOptions, (err) => {
+                if (err) console.error("⚠️ Silent Registration Email Dispatch Warning:", err.message);
+                else console.log(`🚀 Initial verification link dispatched dynamically to: ${user.email}`);
+            });
+
+        } catch (emailBuildErr) {
+            console.error("Non-fatal onboarding email structural exception:", emailBuildErr.message);
+        }
+
+        return res.status(201).json({ message: "Registration Successful! Verification email sent.", user });
     } catch (err) {
         console.error("Register Error:", err);
-        res.status(500).json("Backend error during registration");
+        return res.status(500).json("Backend error during registration");
     }
 });
-// backend/routes/auth.js
 
-// UPDATE PASSWORD ROUTE
-router.post('/update-password', async (req, res) => {
+// --- RESEND VERIFICATION LINK ---
+router.post("/resend-verification", async (req, res) => {
     try {
-        const { userId, newPassword } = req.body;
+        if (!req.body || !req.body.email) {
+            return res.status(400).json("Email address is required.");
+        }
 
-        // 1. Hash the new password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        // 1. Find user (Normalize email safely)
+        const user = await User.findOne({ email: req.body.email.toLowerCase().trim() });
+        if (!user) {
+            return res.status(404).json("No account found with this email address.");
+        }
 
-        // 2. Find user by ID and update their password
-        const updatedUser = await User.findByIdAndUpdate(
-            userId, 
-            { password: hashedPassword },
-            { new: true }
+        // 2. Prevent resending if account is already verified
+        if (user.isVerified) {
+            return res.status(400).json("This account is already verified. Please log in.");
+        }
+
+        // 3. Generate secure verification token (Expires in 1 hour)
+        const verificationToken = jwt.sign(
+            { userId: user._id },
+            "yourSecretKey", 
+            { expiresIn: "1h" }
         );
 
-        if (!updatedUser) return res.status(404).json("User not found");
+        const verificationUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
 
-        res.status(200).json("Password updated successfully!");
+        // 4. Construct email parameters with your updated verified sender
+        const mailOptions = {
+            from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>',
+            to: user.email,
+            subject: "Verify Your SportsConnect Account 🚀",
+            html: `
+                <div style="font-family: sans-serif; border: 2px solid #06b6d4; padding: 25px; border-radius: 15px; max-width: 550px; margin: 0 auto; background-color: #ffffff;">
+                    <h2 style="color: #06b6d4; text-align: center; text-transform: uppercase; letter-spacing: 1px;">Verify Your Email</h2>
+                    <p style="color: #334155; font-size: 15px; line-height: 1.5;">Hi <strong>${user.username}</strong>,</p>
+                    <p style="color: #334155; font-size: 15px; line-height: 1.5;">You requested a new verification link for your SportsConnect account. Click the button below to activate your account and join local tournaments:</p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${verificationUrl}" style="background-color: #06b6d4; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);">
+                            Verify Account
+                        </a>
+                    </div>
+                    
+                    <p style="color: #64748b; font-size: 12px; text-align: center;">This link is valid for 60 minutes. If you did not request this, please ignore this email.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                    <p style="color: #06b6d4; font-size: 13px; font-weight: bold; text-align: center; margin: 0;">SportsConnect Team India</p>
+                </div>
+            `
+        };
+
+        // 5. Run mail delivery engine
+        transporter.sendMail(mailOptions, (err) => {
+            if (err) {
+                console.error("Resend Mail Error:", err);
+                return res.status(500).json("Email failed to send");
+            }
+            return res.status(200).json("Verification email sent!");
+        });
     } catch (err) {
-        console.error(err);
-        res.status(500).json("Server error during password update");
+        console.error("Resend Verification Logic Error:", err);
+        return res.status(500).json("Internal Server Error");
     }
 });
 
 // --- FORGOT PASSWORD ---
 router.post('/forgot-password', async (req, res) => {
     try {
-        // Normalize the incoming email to match the DB
-        const email = req.body.email.toLowerCase();
+        // Safe parameter extraction check to prevent crash if payload is undefined
+        if (!req.body || !req.body.email) {
+            return res.status(400).json("Email parameter is required.");
+        }
+
+        const email = req.body.email.toLowerCase().trim();
         const user = await User.findOne({ email });
 
         if (!user) {
@@ -73,19 +164,21 @@ router.post('/forgot-password', async (req, res) => {
         }
 
         const mailOptions = {
-            from: '"SportsConnect 🏆" <rehanask1205@gmail.com>',
+            from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>',
             to: user.email,
             subject: 'Password Reset Request',
             html: `
-                <div style="font-family: sans-serif; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
-                    <h2 style="color: #0891b2;">SportsConnect</h2>
-                    <p>Hello <strong>${user.username}</strong>,</p>
-                    <p>You requested a password reset. Click the button below to update your password:</p>
-                    <a href="http://localhost:3000/reset-password/${user._id}" 
-                       style="background-color: #0891b2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                       Reset Password
-                    </a>
-                    <p style="margin-top: 20px; font-size: 12px; color: #777;">If you did not request this, please ignore this email.</p>
+                <div style="font-family: sans-serif; border: 2px solid #06b6d4; padding: 20px; border-radius: 15px; max-width: 550px; margin: 0 auto; background-color: #ffffff;">
+                    <h2 style="color: #06b6d4; text-transform: uppercase;">SportsConnect</h2>
+                    <p style="color: #334155; font-size: 15px;">Hello <strong>${user.username}</strong>,</p>
+                    <p style="color: #334155; font-size: 15px; line-height: 1.5;">You requested a password reset. Click the button below to update your password:</p>
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="http://localhost:3000/reset-password/${user._id}" 
+                           style="background-color: #06b6d4; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);">
+                           Reset Password
+                        </a>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">If you did not request this, please ignore this email.</p>
                 </div>
             `
         };
@@ -95,20 +188,23 @@ router.post('/forgot-password', async (req, res) => {
                 console.error("Mail Error:", err);
                 return res.status(500).json("Email failed to send");
             }
-            res.status(200).json("Email sent!");
+            return res.status(200).json("Email sent!");
         });
     } catch (err) {
         console.error("Forgot Password Logic Error:", err);
-        res.status(500).json("Internal Server Error");
+        return res.status(500).json("Internal Server Error");
     }
 });
-// backend/routes/auth.js
 
-// Ensure this is router.post (NOT router.get)
+// --- UPDATE PASSWORD ---
 router.post('/update-password', async (req, res) => {
     try {
+        if (!req.body || !req.body.userId || !req.body.newPassword) {
+            return res.status(400).json("userId and newPassword variables are required.");
+        }
+
         const { userId, newPassword } = req.body;
-        
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -120,17 +216,21 @@ router.post('/update-password', async (req, res) => {
 
         if (!updatedUser) return res.status(404).json("User not found");
 
-        res.status(200).json("Password updated successfully!");
+        return res.status(200).json("Password updated successfully!");
     } catch (err) {
-        console.error(err);
-        res.status(500).json("Server error");
+        console.error("Update Password Error:", err);
+        return res.status(500).json("Server error during password update");
     }
 });
 
 // --- LOGIN ---
 router.post('/login', async (req, res) => {
     try {
-        const user = await User.findOne({ email: req.body.email.toLowerCase() });
+        if (!req.body || !req.body.email || !req.body.password) {
+            return res.status(400).json("Email and Password payload parameters are mandatory.");
+        }
+
+        const user = await User.findOne({ email: req.body.email.toLowerCase().trim() });
         if (!user) return res.status(401).json("User not found!");
 
         const validPassword = await bcrypt.compare(req.body.password, user.password);
@@ -143,8 +243,8 @@ router.post('/login', async (req, res) => {
             { expiresIn: "1h" }
         );
 
-        // Send detailed user data to frontend for localStorage
-        res.status(200).json({
+        // Send detailed user data to frontend for localStorage mapping
+        return res.status(200).json({
             token,
             username: user.username,
             role: user.role,
@@ -153,7 +253,7 @@ router.post('/login', async (req, res) => {
         });
     } catch (err) {
         console.error("Login Error:", err);
-        res.status(500).json("Internal Server Error");
+        return res.status(500).json("Internal Server Error");
     }
 });
 

@@ -41,7 +41,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Community from "./components/Community";
 import HowItWorks from "./components/HowItWorks";
-
+import ResendVerification from "./pages/ResendVerification";
 function App() {
   return (
     <Router>
@@ -53,7 +53,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password/:userId" element={<ResetPassword />} />
           <Route path="/feed" element={<Feed />} /> 
-          
+          <Route path="/resend-verification" element={<ResendVerification />} />
           {/* DYNAMIC MATCH ROUTE - FIXED: Cleaned up duplicate nested Routes wrapper */}
           <Route path="/match/:id" element={<MatchDetails />} />
           

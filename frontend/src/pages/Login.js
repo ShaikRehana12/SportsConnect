@@ -24,14 +24,17 @@ function Login() {
 
       const { username, role, token, interests, city } = response.data;
 
+      // Save credentials to local memory
       localStorage.setItem("token", token);
       localStorage.setItem("userName", username);
       localStorage.setItem("userRole", role);
       localStorage.setItem("userCity", city || "Hyderabad");
       localStorage.setItem("userInterests", JSON.stringify(interests || []));
 
-      window.dispatchEvent(new Event("storage"));
+      // CRITICAL: Instantly alert the Navbar component to update its state
+      window.dispatchEvent(new Event("authChange"));
 
+      // Route based on account access clearance
       if (role === "admin") {
         navigate("/admin");
       } else if (!interests || interests.length === 0) {
@@ -73,8 +76,7 @@ function Login() {
             {error}
           </div>
         )}
-        {/* // This is likely in your Login.js where you handle the axios response
-localStorage.setItem("userId", res.data.userId || res.data.user._id); */}
+
         <div className="space-y-5">
           <div>
             <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Email Address</label>
