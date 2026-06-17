@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Users, Trophy, Calendar, BarChart3, Shield, Plus, Search, Trash2, X, Image as ImageIcon, CheckCircle, AlertTriangle, MapPin, Clock } from 'lucide-react';
+import { Users, Trophy, Calendar, BarChart3, Shield, Plus, Search, Trash2, X, Image as ImageIcon, CheckCircle, AlertTriangle, MapPin, Clock, Edit2, Save, Layers, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CUSTOM UI COMPONENTS ---
@@ -56,10 +57,14 @@ export default function AdminDashboard() {
   const [matches, setMatches] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Track metrics filtering modes ('all' | 'upcoming')
-  const [filterMode, setFilterMode] = useState('all');
-  // Track currently selected item for full contextual drill-down view
+  // Track URL query parameters for dynamic filter tracking
+  const { search } = useLocation();
+  const queryParams = new URLSearchParams(search);
+  const currentFilter = queryParams.get("filter"); // "upcoming" | "live" | null
+  
   const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', location: '', date: '', time: '', maxPlayers: 10 });
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [selectedFile, setSelectedFile] = useState(null);
@@ -76,6 +81,20 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  // Sync edit form fields when a new event row is clicked
+  useEffect(() => {
+    if (selectedMatchDetails) {
+      setEditForm({
+        title: selectedMatchDetails.title || '',
+        location: selectedMatchDetails.location || '',
+        date: selectedMatchDetails.date || '',
+        time: selectedMatchDetails.time || '',
+        maxPlayers: selectedMatchDetails.maxPlayers || 10
+      });
+      setIsEditing(false);
+    }
+  }, [selectedMatchDetails]);
+
   const showNotification = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => {
@@ -86,7 +105,12 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/matches/all");
-      setMatches(res.data);
+      setMatches(res.data || []);
+      
+      if (selectedMatchDetails) {
+        const currentTarget = res.data.find(m => m._id === selectedMatchDetails._id);
+        if (currentTarget) setSelectedMatchDetails(currentTarget);
+      }
     } catch (err) {
       console.error("Fetch error", err);
     }
@@ -141,10 +165,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation(); // Prevents opening the detail drawer when clicking delete button
+  const handleUpdateEvent = async (e) => {
+    e.preventDefault();
     const token = localStorage.getItem("token");
-    if (!window.confirm("Drop this tournament permanently?")) return;
+    try {
+      const res = await axios.put(`http://localhost:5000/api/matches/${selectedMatchDetails._id}`, editForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsEditing(false);
+      showNotification("Event parameters synchronized successfully.", "success");
+      fetchData();
+    } catch (err) {
+      showNotification("Failed to save changes down to backend.", "error");
+    }
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation(); 
+    const token = localStorage.getItem("token");
     try {
       await axios.delete(`http://localhost:5000/api/matches/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -157,10 +195,16 @@ export default function AdminDashboard() {
     }
   };
 
-  // Logic to process stat calculations and active filters
-  const upcomingMatches = matches.filter(m => new Date(m.date) >= new Date().setHours(0,0,0,0));
-  
-  const baseFilteredList = filterMode === 'upcoming' ? upcomingMatches : matches;
+  const todayStart = new Date().setHours(0, 0, 0, 0);
+
+  const upcomingMatches = matches.filter(m => m.date && new Date(m.date).setHours(0, 0, 0, 0) > todayStart);
+  const liveMatches = matches.filter(m => m.date && new Date(m.date).setHours(0, 0, 0, 0) === todayStart);
+
+  const baseFilteredList = currentFilter === 'upcoming' 
+    ? upcomingMatches 
+    : currentFilter === 'live' 
+    ? liveMatches 
+    : matches;
 
   const filteredMatches = baseFilteredList.filter(m => 
     m.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -222,12 +266,11 @@ export default function AdminDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 space-y-8">
-        {/* INTERACTIVE STAT CARDS SECTION */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-           <StatCard title="Total Matches" value={matches.length} icon={Trophy} onClick={() => setFilterMode('all')} active={filterMode === 'all'} description="Click to view all events" />
+           <StatCard title="Total Matches" value={matches.length} icon={Trophy} interactive={false} />
            <StatCard title="Total Players" value={matches.reduce((a, b) => a + (b.players?.length || 0), 0)} icon={Users} interactive={false} />
-           <StatCard title="Upcoming" value={upcomingMatches.length} icon={Calendar} onClick={() => setFilterMode('upcoming')} active={filterMode === 'upcoming'} description="Click to view upcoming" />
-           <StatCard title="Revenue" value="₹0" icon={BarChart3} interactive={false} />
+           <StatCard title="Upcoming" value={upcomingMatches.length} icon={Calendar} active={currentFilter === 'upcoming'} interactive={false} />
+           <StatCard title="Live Today" value={liveMatches.length} icon={Radio} active={currentFilter === 'live'} interactive={false} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -236,9 +279,14 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between bg-white">
                 <div>
-                  <CardTitle>Live Tournament Control</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    {currentFilter === "upcoming" && <Calendar className="w-5 h-5 text-cyan-600" />}
+                    {currentFilter === "live" && <Radio className="w-5 h-5 text-emerald-500 animate-pulse" />}
+                    {!currentFilter && <Layers className="w-5 h-5 text-cyan-600" />}
+                    {currentFilter === 'upcoming' ? "Upcoming Schedule" : currentFilter === 'live' ? "Live Dashboard" : "Live Tournament Control"}
+                  </CardTitle>
                   <p className="text-[9px] font-bold text-cyan-600 uppercase tracking-wider mt-1">
-                    Viewing: {filterMode === 'all' ? "All Records" : "Upcoming Schedule"}
+                    Viewing: {currentFilter === 'upcoming' ? "Upcoming Schedule" : currentFilter === 'live' ? "Live Matches" : "All Records"}
                   </p>
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase">{filteredMatches.length} Displayed</p>
@@ -256,43 +304,59 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {filteredMatches.length > 0 ? (
-                        filteredMatches.map((m) => (
-                          <tr key={m._id} 
-                            onClick={() => setSelectedMatchDetails(m)}
-                            className={`hover:bg-slate-50/80 transition-all cursor-pointer group ${selectedMatchDetails?._id === m._id ? 'bg-cyan-50/40 border-l-4 border-l-cyan-600' : ''}`}
-                          >
-                            <td className="px-8 py-6">
-                              <div className="flex items-center gap-3">
-                                {m.image && m.image !== "default-sports.jpg" ? (
-                                  <img src={m.image} alt="icon" className="w-10 h-10 rounded-lg object-cover bg-slate-100 shadow-sm" />
-                                ) : (
-                                  <div className="w-10 h-10 bg-slate-100 text-slate-400 flex items-center justify-center rounded-lg">
-                                    <ImageIcon className="w-4 h-4" />
+                        filteredMatches.map((m) => {
+                          const matchTimeInt = new Date(m.date).setHours(0,0,0,0);
+                          const isFuture = matchTimeInt > todayStart;
+                          const isLiveToday = matchTimeInt === todayStart;
+
+                          return (
+                            <tr key={m._id} 
+                              onClick={(e) => {
+                                e.preventDefault(); 
+                                setSelectedMatchDetails(m);
+                              }}
+                              className={`hover:bg-slate-50/80 transition-all cursor-pointer group ${selectedMatchDetails?._id === m._id ? 'bg-cyan-50/40 border-l-4 border-l-cyan-600' : ''}`}
+                            >
+                              <td className="px-8 py-6">
+                                <div className="flex items-center gap-3">
+                                  {m.image && m.image !== "default-sports.jpg" ? (
+                                    <img src={m.image} alt="icon" className="w-10 h-10 rounded-lg object-cover bg-slate-100 shadow-sm" />
+                                  ) : (
+                                    <div className="w-10 h-10 bg-slate-100 text-slate-400 flex items-center justify-center rounded-lg">
+                                      <ImageIcon className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-black text-slate-800 text-sm uppercase italic group-hover:text-cyan-600 transition-colors">{m.title || "Untitled Match"}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-[10px] text-slate-400 font-bold uppercase">{m.sportType}</span>
+                                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                        isFuture ? "bg-cyan-50 text-cyan-600 border border-cyan-100" : isLiveToday ? "bg-emerald-50 text-emerald-600 border border-emerald-100 animate-pulse" : "bg-slate-100 text-slate-500"
+                                      }`}>
+                                        {isFuture ? "Upcoming" : isLiveToday ? "Live" : "Concluded"}
+                                      </span>
+                                    </div>
                                   </div>
-                                )}
-                                <div>
-                                  <p className="font-black text-slate-800 text-sm uppercase italic group-hover:text-cyan-600 transition-colors">{m.title || "Untitled Match"}</p>
-                                  <p className="text-[10px] text-slate-400 font-bold uppercase">{m.sportType}</p>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                                <div className="flex items-center gap-2">
-                                 <span className="text-lg font-black text-slate-900">{m.players?.length || 0}</span>
-                                 <span className="text-slate-300 text-xs font-bold">/ {m.maxPlayers || 10}</span>
-                                </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <p className="text-xs font-bold text-slate-600 uppercase">{m.location}</p>
-                              <p className="text-[10px] text-slate-400 font-medium">{m.date} {m.time ? `| ${m.time}` : ''}</p>
-                            </td>
-                            <td className="px-8 py-6 text-right">
-                              <button onClick={(e) => handleDelete(e, m._id)} className="p-2 text-slate-300 hover:text-red-600 transition-colors">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                              <td className="px-8 py-6">
+                                  <div className="flex items-center gap-2">
+                                   <span className="text-lg font-black text-slate-900">{m.players?.length || 0}</span>
+                                   <span className="text-slate-300 text-xs font-bold">/ {m.maxPlayers || 10}</span>
+                                  </div>
+                              </td>
+                              <td className="px-8 py-6">
+                                <p className="text-xs font-bold text-slate-600 uppercase">{m.location}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">{m.date} {m.time ? `| ${m.time}` : ''}</p>
+                              </td>
+                              <td className="px-8 py-6 text-right">
+                                <button onClick={(e) => handleDelete(e, m._id)} className="p-2 text-slate-300 hover:text-red-600 transition-colors">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan="4" className="px-8 py-20 text-center text-slate-400 font-bold uppercase text-xs">No matching tournaments found.</td>
@@ -305,7 +369,7 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* RIGHT PANELS: EVENT DETAILS FOCUS CONTAINER */}
+          {/* RIGHT DETAILS PANEL: DYNAMIC VIEW OR INLINE EDITING MANAGEMENT */}
           <AnimatePresence>
             {selectedMatchDetails && (
               <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="lg:col-span-1">
@@ -318,7 +382,7 @@ export default function AdminDashboard() {
                         <ImageIcon className="w-10 h-10 stroke-[1]" />
                       </div>
                     )}
-                    <button onClick={() => setSelectedMatchDetails(null)} className="absolute top-4 right-4 p-2 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full transition-all">
+                    <button onClick={() => { setSelectedMatchDetails(null); setIsEditing(false); }} className="absolute top-4 right-4 p-2 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full transition-all">
                       <X className="w-4 h-4" />
                     </button>
                     <span className="absolute bottom-4 left-6 bg-cyan-600 text-white font-black text-[9px] px-3 py-1 uppercase rounded-md tracking-wider shadow-md">
@@ -327,53 +391,101 @@ export default function AdminDashboard() {
                   </div>
 
                   <CardContent className="p-8 space-y-6">
-                    <div>
-                      <h3 className="text-xl font-black uppercase italic text-slate-900 tracking-tight leading-tight">{selectedMatchDetails.title}</h3>
-                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-1">ID: #{selectedMatchDetails._id}</p>
-                    </div>
-
-                    <div className="space-y-3 border-y border-slate-50 py-4">
-                      <div className="flex items-center gap-3 text-slate-600 text-xs font-semibold">
-                        <MapPin className="w-4 h-4 text-cyan-600 flex-shrink-0" />
-                        <span>{selectedMatchDetails.location}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-slate-600 text-xs font-semibold">
-                        <Clock className="w-4 h-4 text-cyan-600 flex-shrink-0" />
-                        <span>{selectedMatchDetails.date} {selectedMatchDetails.time ? `at ${selectedMatchDetails.time}` : ''}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 mb-2">
-                        <span>Squad Registry Fill</span>
-                        <span className="text-slate-700 font-black">{selectedMatchDetails.players?.length || 0} / {selectedMatchDetails.maxPlayers} Filled</span>
-                      </div>
-                      <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-cyan-600 rounded-full transition-all duration-500" 
-                          style={{ width: `${Math.min(( (selectedMatchDetails.players?.length || 0) / selectedMatchDetails.maxPlayers) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* ATTENDEE LIST MODULE */}
-                    <div>
-                      <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">Enrolled Users Stack</h4>
-                      <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                        {selectedMatchDetails.players && selectedMatchDetails.players.length > 0 ? (
-                          selectedMatchDetails.players.map((p, index) => (
-                            <div key={index} className="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                              <span className="text-xs font-bold text-slate-700">{p.name || `Competitor ${index + 1}`}</span>
-                              <span className="text-[8px] font-black uppercase bg-slate-200/60 px-2 py-0.5 rounded text-slate-500">Confirmed</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-6 border border-dashed rounded-xl border-slate-200 text-[10px] uppercase font-bold text-slate-400">
-                            Waiting for player check-ins.
+                    {isEditing ? (
+                      // INLINE ADMINISTRATIVE EDIT FORM
+                      <form onSubmit={handleUpdateEvent} className="space-y-4">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Edit Event Title</label>
+                          <Input value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} required />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Venue Location</label>
+                          <Input value={editForm.location} onChange={e => setEditForm({...editForm, location: e.target.value})} required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Date</label>
+                            <Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} required />
                           </div>
-                        )}
-                      </div>
-                    </div>
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Time</label>
+                            <Input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} required />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Maximum Capacity</label>
+                          <Input type="number" value={editForm.maxPlayers} onChange={e => setEditForm({...editForm, maxPlayers: Number(e.target.value)})} required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <Button type="button" variant="outline" className="w-full text-center justify-center py-3.5" onClick={() => setIsEditing(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit" variant="cyan" className="w-full flex items-center justify-center gap-2 py-3.5">
+                            <Save className="w-3.5 h-3.5" /> Save
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      // READ-ONLY DISPLAY METADATA
+                      <>
+                        <div>
+                          <h3 className="text-xl font-black uppercase italic text-slate-900 tracking-tight leading-tight">{selectedMatchDetails.title}</h3>
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-1">ID: #{selectedMatchDetails._id}</p>
+                        </div>
+
+                        <div className="space-y-3 border-y border-slate-50 py-4">
+                          <div className="flex items-center gap-3 text-slate-600 text-xs font-semibold">
+                            <MapPin className="w-4 h-4 text-cyan-600 flex-shrink-0" />
+                            <span>{selectedMatchDetails.location}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-slate-600 text-xs font-semibold">
+                            <Clock className="w-4 h-4 text-cyan-600 flex-shrink-0" />
+                            <span>{selectedMatchDetails.date} {selectedMatchDetails.time ? `at ${selectedMatchDetails.time}` : ''}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 mb-2">
+                            <span>Squad Registry Fill</span>
+                            <span className="text-slate-700 font-black">{selectedMatchDetails.players?.length || 0} / {selectedMatchDetails.maxPlayers} Filled</span>
+                          </div>
+                          <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-cyan-600 rounded-full transition-all duration-500" 
+                              style={{ width: `${Math.min(( (selectedMatchDetails.players?.length || 0) / selectedMatchDetails.maxPlayers) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <Button 
+                            variant="cyan" 
+                            className="w-full flex items-center justify-center gap-2 py-4" 
+                            onClick={() => setIsEditing(true)}
+                          >
+                            <Edit2 className="w-4 h-4" /> Edit Event Parameters
+                          </Button>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">Enrolled Users Stack</h4>
+                          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                            {selectedMatchDetails.players && selectedMatchDetails.players.length > 0 ? (
+                              selectedMatchDetails.players.map((p, index) => (
+                                <div key={index} className="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
+                                  <span className="text-xs font-bold text-slate-700">{p.name || `Competitor ${index + 1}`}</span>
+                                  <span className="text-[8px] font-black uppercase bg-slate-200/60 px-2 py-0.5 rounded text-slate-500">Confirmed</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-6 border border-dashed rounded-xl border-slate-200 text-[10px] uppercase font-bold text-slate-400">
+                                Waiting for player check-ins.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

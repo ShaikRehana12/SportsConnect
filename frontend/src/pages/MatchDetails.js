@@ -1,38 +1,106 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { MapPin, Calendar, Clock, Users, ArrowLeft, Trophy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Calendar, Clock, Users, ArrowLeft, Trophy, CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function MatchDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
+  
+  // SUCCESS POPUP RECEIPT TICKET STATE
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // AUTH STATE EXTRACTIONS
+  const username = localStorage.getItem("userName") || "";
+  // 🛠️ FIXED FALLBACK LOGIC: Fallback cleanly to userName if userId string is blank
+  const userId = localStorage.getItem("userId") || localStorage.getItem("userName") || "";
+  const isLoggedIn = username && username !== "Player";
 
   useEffect(() => {
-    const fetchMatchDetails = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5000/api/matches/all`);
-        // Find the specific item matching our URL ID parameter
-        const found = res.data.find(m => m._id === id);
-        setMatch(found);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error retrieving match details:", err);
-        setLoading(false);
-      }
-    };
     fetchMatchDetails();
   }, [id]);
 
+  const fetchMatchDetails = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/matches/all`);
+      // Find the specific item matching our URL ID parameter
+      const found = res.data.find(m => m._id === id);
+      setMatch(found);
+    } catch (err) {
+      console.error("Error retrieving match details:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterAction = async () => {
+    if (!isLoggedIn || !userId) {
+      navigate("/login");
+      return;
+    }
+  
+    setRegistering(true);
+    try {
+      // 1. Submit registration packet payload straight to backend
+      await axios.post(`http://localhost:5000/api/matches/${id}/register`, { userId });
+      
+      // 2. SUCCESS! Trigger ticket receipt visual modal display
+      setShowSuccessModal(true);
+
+      // 3. INCREASES COUNT ON SCREEN LIVE: Refresh data behind popup instantly!
+      fetchMatchDetails(); 
+
+    } catch (err) {
+      // 🛠️ SILENT SYSTEM: Removed window browser error alert logs completely
+      console.error("Registration failed silently:", err.response?.data?.error || err.message);
+    } finally {
+      setRegistering(false);
+    }
+  };
+useEffect(() => {
+  if (match) {
+    const hasJoined = match.players?.some(player => {
+      const pId = typeof player === 'object' ? player._id : player;
+      return String(pId) === String(userId) || String(player) === String(username);
+    });
+
+    // 🔄 REDIRECT LOGIC: Send ticket holders away from details to their upcoming itinerary layout
+    if (hasJoined) {
+      navigate("/upcoming-events"); // Or wherever your itinerary dashboard is mapped
+    }
+  }
+}, [match, userId, username, navigate]);
+  // CANCEL SLOT / LEAVE MATCH HANDLER ENGINE
+  const handleLeaveAction = async () => {
+    if (!window.confirm("Are you sure you want to give up your spot for this match?")) return;
+
+    setRegistering(true);
+    try {
+      const res = await axios.post(`http://localhost:5000/api/matches/${id}/leave`, { userId });
+      
+      // Sync UI counter state live
+      fetchMatchDetails();
+    } catch (err) {
+      console.error("Cancellation failed silently:", err.response?.data?.error || err.message);
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  // Guard to prevent null crashes before data resolves
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading Tournament Specifications...</p>
+        <p className="text-xs font-black uppercase tracking-widest text-slate-400 animate-pulse">Loading Tournament Specifications...</p>
       </div>
     );
   }
 
+  // Validation fallback route guard if tournament tracking lookup parameter fails
   if (!match) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
@@ -42,10 +110,27 @@ export default function MatchDetails() {
     );
   }
 
+  const currentJoined = match.players?.length || 0;
+  const maxSlots = match.maxPlayers || 10;
+  const isFull = currentJoined >= maxSlots;
+  
+  // 🛠️ FIXED: Deep state structural array lookup engine evaluation logic
+  const hasJoinedAlready = match.players?.some(player => {
+    const pId = typeof player === 'object' ? player._id : player;
+    return (
+      (userId && String(pId) === String(userId)) || 
+      (username && String(pId) === String(username)) ||
+      (player && String(player) === String(username))
+    );
+  });
+
+  // Calculate if the event date has already passed to restrict cancel visibility rules
+  const isEventPast = new Date() > new Date(match.date);
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans p-6 md:p-12">
+    <div className="min-h-screen bg-slate-50 font-sans pt-24 pb-12 p-6 md:p-12">
       <div className="max-w-3xl mx-auto space-y-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-slate-900 transition-colors">
+        <button onClick={() => navigate("/feed")} className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-cyan-500 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Feed
         </button>
 
@@ -87,22 +172,107 @@ export default function MatchDetails() {
             <div>
               <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 mb-2">
                 <span>Registration Status</span>
-                <span className="text-slate-800">{match.players?.length || 0} / {match.maxPlayers} Spots Taken</span>
+                <span className="text-slate-800">{currentJoined} / {maxSlots} Spots Taken</span>
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-cyan-600 rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.min(((match.players?.length || 0) / match.maxPlayers) * 100, 100)}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${isFull && !hasJoinedAlready ? 'bg-red-500' : 'bg-cyan-600'}`} 
+                  style={{ width: `${Math.min((currentJoined / maxSlots) * 100, 100)}%` }}
                 />
               </div>
             </div>
 
-            <button className="w-full py-4 bg-slate-900 hover:bg-cyan-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-[0.98]">
-              {match.entryFee > 0 ? `Pay ₹${match.entryFee} & Register` : 'Secure My Spot Now'}
-            </button>
+            {/* Dynamic Action State Engine Toggles */}
+            {hasJoinedAlready ? (
+              <button 
+                onClick={handleLeaveAction}
+                disabled={registering || isEventPast}
+                className={`w-full py-4 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-[0.98] ${
+                  isEventPast
+                    ? "bg-slate-300 cursor-not-allowed shadow-none"
+                    : "bg-red-500 hover:bg-red-600 shadow-red-100"
+                }`}
+              >
+                {registering 
+                  ? 'Processing Cancellation...' 
+                  : isEventPast 
+                  ? 'Match Completed (Locked)' 
+                  : 'Cancel My Slot / Leave Match 🏃'}
+              </button>
+            ) : (
+              <button 
+                onClick={handleRegisterAction}
+                disabled={registering || isFull}
+                className={`w-full py-4 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-[0.98] ${
+                  registering 
+                    ? "bg-slate-400 cursor-wait" 
+                    : isFull 
+                    ? "bg-red-100 border border-red-200 text-red-500 cursor-not-allowed shadow-none" 
+                    : "bg-slate-900 hover:bg-cyan-600"
+                }`}
+              >
+                {registering 
+                  ? 'Securing Slot...' 
+                  : isFull 
+                  ? 'Bracket Fully Booked 🚫' 
+                  : match.entryFee > 0 
+                  ? `Pay ₹${match.entryFee} & Register` 
+                  : 'Secure My Spot Now'}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* SUCCESS POPUP TICKET MODAL COMPONENT VIEW */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-[45px] p-10 max-w-sm w-full text-center shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+              
+              <div className="w-20 h-20 bg-green-50 text-green-500 border border-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-10 h-10" />
+              </div>
+              
+              <h2 className="text-2xl font-black uppercase italic mb-2 text-slate-900">
+                Slot Locked <span className="text-cyan-500">In!</span>
+              </h2>
+              
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-tight mb-8">
+                Your pass ticket has been securely locked down into the backend tournament roster!
+              </p>
+
+              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-6 mb-8 text-left relative">
+                <p className="text-[8px] font-black text-cyan-600 uppercase mb-4 tracking-widest">Official Entry Pass</p>
+                <h4 className="text-lg font-black text-slate-800 uppercase italic leading-tight mb-1">{match.title}</h4>
+                <p className="text-[10px] text-slate-500 font-bold mb-4 uppercase">
+                  {match.location} @ {match.time || "TBD"}
+                </p>
+                <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
+                  <p className="text-xs font-black uppercase text-slate-800">{username}</p>
+                  <div className="w-8 h-8 bg-slate-200 rounded-md"></div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate("/feed");
+                }} 
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-cyan-600 transition-colors"
+              >
+                Return To Match Feed
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

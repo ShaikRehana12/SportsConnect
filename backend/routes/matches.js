@@ -90,7 +90,7 @@ router.post("/create", upload.single("file"), async (req, res) => {
               <div style="text-align: center; margin: 30px 0;">
                 <a href="http://localhost:3000/dashboard" 
                    style="background-color: #06b6d4; color: white; padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);">
-                   View & Register Now
+                    View & Register Now
                 </a>
               </div>
               
@@ -120,13 +120,32 @@ router.post("/create", upload.single("file"), async (req, res) => {
   }
 });
 
-// GET ALL TOURNAMENTS
-router.get("/all", async (req, res) => {
+// 4. REGISTER USER FOR A TOURNAMENT (FOOLPROOF ENFORCEMENT ENGINE)
+// 5. LEAVE A TOURNAMENT / CANCEL SLOT
+// Add a dynamic cancel/leave endpoint to handle registry updates
+router.post('/leave/:id', async (req, res) => {
   try {
-    const tournaments = await Tournament.find().sort({ createdAt: -1 });
-    res.status(200).json(tournaments);
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: "Tournament record not found." });
+
+    // Enforce deadline validation rule: Cancel allowed only up until the event date
+    const today = new Date().setHours(0,0,0,0);
+    const eventDate = new Date(match.date).setHours(0,0,0,0);
+    if (today > eventDate) {
+      return res.status(400).json({ message: "Cannot cancel slots for past or active match-day events." });
+    }
+
+    const { userId } = req.body; // or extracted cleanly via your verifyToken middleware
+    
+    // Pull user out of the backend schema array
+    match.players = match.players.filter(player => player.toString() !== userId);
+    await match.save();
+
+    // Populate updated document data structures back to frontend
+    const updatedMatch = await Match.findById(req.params.id).populate('players', 'name');
+    res.status(200).json(updatedMatch);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: "Internal update failure.", error: err.message });
   }
 });
 

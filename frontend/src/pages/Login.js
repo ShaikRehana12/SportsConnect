@@ -22,33 +22,35 @@ function Login() {
         password,
       });
 
-      const { username, role, token, interests, city } = response.data;
+      const data = response?.data || {};
 
-      // Save credentials to local memory
-      localStorage.setItem("token", token);
-      localStorage.setItem("userName", username);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userCity", city || "Hyderabad");
-      localStorage.setItem("userInterests", JSON.stringify(interests || []));
+      // Save standard fields safely
+      localStorage.setItem("token", data.token || "");
+      localStorage.setItem("userName", data.username || "");
+      localStorage.setItem("userRole", data.role || "user");
+      localStorage.setItem("userCity", data.city || "Hyderabad");
+      localStorage.setItem("userInterests", JSON.stringify(data.interests || []));
+      
+      // 🛠️ BACKEND FALLBACK SYSTEM: Since backend doesn't send an ID,
+      // we will use the username string as a reliable fallback identifier
+      const fallbackId = data.userId || data._id || data.username || "";
+      localStorage.setItem("userId", fallbackId);
 
-      // CRITICAL: Instantly alert the Navbar component to update its state
+      // Trigger navbar state sync
       window.dispatchEvent(new Event("authChange"));
 
-      // Route based on account access clearance
-      if (role === "admin") {
+      // Route layout permissions cleanly
+      if (data.role === "admin") {
         navigate("/admin");
-      } else if (!interests || interests.length === 0) {
+      } else if (!data.interests || data.interests.length === 0) {
         navigate("/select-interests");
       } else {
         navigate("/feed");
       }
 
-    } catch (error) {
-      console.error("Login Error:", error);
-      setError(
-        error.response?.data?.msg || 
-        "Login failed. Please verify your credentials."
-      );
+    } catch (err) {
+      console.error("Login Error:", err);
+      setError(err.response?.data?.msg || "Login failed. Please verify your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -56,19 +58,14 @@ function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans p-4">
-      <form 
-        onSubmit={handleLogin} 
-        className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 relative overflow-hidden"
-      >
+      <form onSubmit={handleLogin} className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
         
         <div className="text-center mb-10">
           <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">
             Sports<span className="text-cyan-600">Connect</span>
           </h2>
-          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-bold mt-2">
-            Secure Access Portal
-          </p>
+          <p className="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-bold mt-2">Secure Access Portal</p>
         </div>
 
         {error && (
@@ -92,11 +89,7 @@ function Login() {
           <div>
             <div className="flex justify-between items-center ml-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase">Password</label>
-              <button 
-                type="button"
-                onClick={() => navigate("/forgot-password")}
-                className="text-[11px] font-bold text-cyan-600 hover:text-cyan-700 transition italic"
-              >
+              <button type="button" onClick={() => navigate("/forgot-password")} className="text-[11px] font-bold text-cyan-600 hover:text-cyan-700 transition italic">
                 Forgot Password?
               </button>
             </div>
@@ -108,11 +101,7 @@ function Login() {
                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition-all"
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-600 transition"
-              >
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-600 transition">
                 {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
               </button>
             </div>
@@ -126,19 +115,6 @@ function Login() {
         >
           {isLoading ? "Authenticating..." : "Sign In"}
         </button>
-
-        <div className="mt-10 pt-8 border-t border-slate-50 flex justify-center">
-          <p className="text-sm text-slate-500">
-            New player? 
-            <button 
-              type="button"
-              onClick={() => navigate("/register")} 
-              className="ml-2 text-cyan-600 font-extrabold hover:text-slate-900 transition underline-offset-4 hover:underline"
-            >
-              Create Account
-            </button>
-          </p>
-        </div>
       </form>
     </div>
   );
