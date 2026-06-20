@@ -46,15 +46,16 @@ exports.login = async (req, res) => {
             { expiresIn: '1h' }
         );
 
-        // SEND DATA BACK TO FRONTEND
-        // This matches exactly what your Login.js expects
+        // 🌟 FORCE EXPLICIT STRING CASTING FOR IDENTIFIERS
         res.json({
             token,
             username: user.username,
             role: user.role,
             city: user.city,
             interests: user.interests,
-            _id: user._id
+            _id: String(user._id),       // 🚀 Convert ObjectId safely to String
+            userId: String(user._id),    // 🚀 Convert ObjectId safely to String
+            isVerified: user.isVerified ?? true 
         });
     } catch (err) {
         res.status(500).send("Server error during login");

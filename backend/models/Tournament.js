@@ -1,46 +1,3 @@
-// const mongoose = require('mongoose');
-
-// const tournamentSchema = new mongoose.Schema({
-//     title: String,
-//     sportType: String,
-//     location: String,
-//     date: String,
-//     image: String,
-// });
-
-// module.exports = mongoose.model('Tournament', tournamentSchema);
-// const mongoose = require('mongoose');
-
-// const tournamentSchema = new mongoose.Schema({
-//     title: { 
-//         type: String, 
-//         required: [true, "Tournament title is required"],
-//         trim: true 
-//     },
-//     sportType: { 
-//         type: String, 
-//         required: [true, "Please specify the sport (e.g., Cricket, Badminton)"],
-//         enum: ['Cricket', 'Football', 'Badminton', 'Basketball', 'Chess'] // Limits choices to these sports
-//     },
-//     location: { 
-//         type: String, 
-//         required: [true, "Location is required"] 
-//     },
-//     date: { 
-//         type: String, // You can also use Date type, but String is fine if you're sending formatted dates
-//         required: [true, "Date is required"] 
-//     },
-//     image: { 
-//         type: String, 
-//         default: "default-sports.jpg" // Provides a fallback image if none is uploaded
-//     },
-// }, { 
-//     timestamps: true // Automatically adds 'createdAt' and 'updatedAt' fields
-// });
-
-// module.exports = mongoose.model('Tournament', tournamentSchema);
-// const mongoose = require('mongoose');
-
 /**
  * Tournament Schema for Sports Connect Web Application
  * Handles validation and constraints for database match storage
@@ -81,6 +38,10 @@ const tournamentSchema = new mongoose.Schema({
         type: Number, 
         default: 10
     },
+    entryFee: {
+        type: Number,
+        default: 0 // Captured seamlessly from your creation request body
+    },
     organizer: {
         type: String
     },
@@ -88,9 +49,21 @@ const tournamentSchema = new mongoose.Schema({
         type: String, 
         default: "default-sports.jpg",
         trim: true
+    },
+    // Track registered users dynamically & prevent .some() undefined crashes
+    players: {
+        type: [String], // Stores User ID strings or references
+        default: []     // Crucial: guarantees an array exists on initialization
     }
 }, { 
-    timestamps: true 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+});
+
+// Dynamic virtual field to calculate seats remaining instantly
+tournamentSchema.virtual('slotsLeft').get(function() {
+    return Math.max(0, this.maxPlayers - (this.players ? this.players.length : 0));
 });
 
 tournamentSchema.index({ sportType: 1 });

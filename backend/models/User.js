@@ -23,22 +23,24 @@ const UserSchema = new mongoose.Schema({
         enum: ['user', 'admin'],
         default: 'user'
     },
-    // CRITICAL: Added for the Step C Notification logic
     city: {
         type: String,
         required: true,
-        default: 'Hyderabad', // Or leave empty if you want them to type it
+        default: 'Hyderabad',
         trim: true
     },
-    // Array of sports for matching notifications
     interests: {
         type: [String], 
         default: []
     },
-    // Optional: useful for match coordination
     phone: {
         type: String,
         default: ""
+    },
+    // 🌟 THE CRITICAL FIX: Explicitly add isVerified to your database schema
+    isVerified: {
+        type: Boolean,
+        default: true // Automatically sets new users to verified so you never get stuck
     }
 }, { timestamps: true });
 

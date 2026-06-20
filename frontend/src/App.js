@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
-import AdminNavbar from "./components/AdminNavbar"; // Added admin specific navigation header
+import AdminNavbar from "./components/AdminNavbar"; 
 import MatchDetails from "./pages/MatchDetails"; 
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -8,24 +9,70 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import Feed from "./pages/Feed"; 
+
+// Corrected paths pointing directly to your pages directory
+import TournamentFeed from "./pages/Feed"; 
+import UpcomingEvents from "./pages/UpcomingEvents"; 
+
 import SelectInterests from "./pages/SelectInterests"; 
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Community from "./components/Community";
 import HowItWorks from "./components/HowItWorks";
 import ResendVerification from "./pages/ResendVerification";
+import VerifyEmail from "./pages/VerifyEmail";
+import AdminUserFeedPreviewPage from "./pages/AdminUserFeedPreview";
+
+// --- GLOBAL PROTECTION GUARD COMPONENT ---
+function ProtectedRoute({ children, requireAdmin = false }) {
+  const [authState, setAuthState] = useState({
+    token: localStorage.getItem("token"),
+    isVerified: localStorage.getItem("isVerified"),
+    role: localStorage.getItem("userRole")
+  });
+
+  useEffect(() => {
+    const handleAuthSync = () => {
+      setAuthState({
+        token: localStorage.getItem("token"),
+        isVerified: localStorage.getItem("isVerified"),
+        role: localStorage.getItem("userRole")
+      });
+    };
+
+    // Listen to the auth updates dispatched by Login.js and VerifyEmail.js
+    window.addEventListener("authChange", handleAuthSync);
+    return () => window.removeEventListener("authChange", handleAuthSync);
+  }, []);
+
+  // 1. If the user isn't authenticated at all, send them back to login portal cleanly
+  if (!authState.token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 2. 🛠️ REPAIRED: Robust validation evaluation check for verification statuses.
+  // This handles string "false", boolean false, and unassigned null/undefined states cleanly.
+  if (authState.isVerified === "false" || authState.isVerified === false) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 3. Admin authorization rule validation guard check
+  if (requireAdmin && String(authState.role).toLowerCase() !== "admin") {
+    console.warn(`[SECURITY] Unauthorized bypass attempt to admin dashboard blocked for role: ${authState.role}`);
+    return <Navigate to="/feed" replace />;
+  }
+
+  return children;
+}
 
 // --- DYNAMIC NAVIGATION WRAPPER COMPONENT ---
 function NavigationWrapper() {
   const location = useLocation();
 
-  // If path string starts with '/admin', render the premium admin desk nav bar options
   if (location.pathname.startsWith("/admin")) {
     return <AdminNavbar />;
   }
 
-  // Otherwise, default back to your classic standard user options
   return <Navbar />;
 }
 
@@ -33,7 +80,6 @@ function NavigationWrapper() {
 function FooterWrapper() {
   const location = useLocation();
 
-  // Hide the global user footer when working within the technical admin hub dashboard layouts
   if (location.pathname.startsWith("/admin")) {
     return null;
   }
@@ -44,38 +90,57 @@ function FooterWrapper() {
 function App() {
   return (
     <Router>
-      {/* Renders the correct navbar dynamically depending on the route path */}
       <NavigationWrapper /> 
       
       <div className="min-h-screen"> 
         <Routes>
+          {/* Public / Guest Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password/:userId" element={<ResetPassword />} />
-          <Route path="/feed" element={<Feed />} /> 
           <Route path="/resend-verification" element={<ResendVerification />} />
-          
-          {/* DYNAMIC MATCH INFO DISPLAY ROUTES */}
-          <Route path="/match/:id" element={<MatchDetails />} />
-          
-          {/* Connects your Feed.jsx redirect link to your MatchDetails view layout */}
-          <Route path="/tournament/:id" element={<MatchDetails />} />
-          
-          <Route path="/select-interests" element={<SelectInterests />} />
-          <Route path="/forgot-password" element={<ForgotPassword/>} />
-          
-          {/* BOTH PATHS NOW POINT TO YOUR TOURNAMENTS DASHBOARD */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/tournaments" element={<Dashboard />} />
-          
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/community" element={<Community />} />
           <Route path="/howitworks" element={<HowItWorks />} />
+
+          {/* 🔐 SECURED USER ROUTES (Wrapped with Centralized Security Guards) */}
+          <Route path="/feed" element={
+            <ProtectedRoute><TournamentFeed /></ProtectedRoute>
+          } /> 
+          <Route path="/select-interests" element={
+            <ProtectedRoute><SelectInterests /></ProtectedRoute>
+          } />
+          <Route path="/match/:id" element={
+            <ProtectedRoute><MatchDetails /></ProtectedRoute>
+          } />
+          <Route path="/tournament/:id" element={
+            <ProtectedRoute><MatchDetails /></ProtectedRoute>
+          } />
+          <Route path="/upcoming-events" element={
+            <ProtectedRoute><UpcomingEvents /></ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+          <Route path="/tournaments" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+          
+          {/* 🔐 SECURED ADMIN ROUTES */}
+          <Route path="/admin" element={
+            <ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>
+          } />
+          <Route path="/admin/feed-preview" element={
+            <ProtectedRoute requireAdmin={true}><AdminUserFeedPreviewPage /></ProtectedRoute>
+          } />
+
+          {/* 🛠️ FALLBACK WILD-CARD PORTAL CATCH-ALL REDIRECT */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
 
-      {/* Renders the footer conditionally (hidden on Admin layouts) */}
       <FooterWrapper /> 
     </Router>
   );

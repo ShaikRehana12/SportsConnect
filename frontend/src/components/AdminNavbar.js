@@ -58,11 +58,16 @@ function AdminNavbar() {
             </Link>
           </div>
 
-          {/* USER FEED VIEW INTERACTIVE OUTLINE REDIRECT */}
+          {/* USER FEED PREVIEW INTERACTIVE OUTLINE REDIRECT */}
           <div className="flex items-center gap-3">
+            {/* 👑 FIXED: Pointed directly to the admin preview path and dynamically toggled border/text colors if active */}
             <Link 
-              to="/feed" 
-              className="px-6 py-3 border border-gray-200 text-slate-700 font-black rounded-2xl hover:border-cyan-500 hover:text-cyan-600 transition-all bg-white text-[10px] uppercase tracking-[0.15em]"
+              to="/admin/feed-preview" 
+              className={`px-6 py-3 border font-black rounded-2xl transition-all text-[10px] uppercase tracking-[0.15em] ${
+                location.pathname === "/admin/feed-preview"
+                  ? "border-cyan-500 text-cyan-600 bg-cyan-50/10"
+                  : "border-gray-200 text-slate-700 bg-white hover:border-cyan-500 hover:text-cyan-600"
+              }`}
             >
               User Feed
             </Link>

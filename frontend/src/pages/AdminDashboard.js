@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Users, Trophy, Calendar, BarChart3, Shield, Plus, Search, Trash2, X, Image as ImageIcon, CheckCircle, AlertTriangle, MapPin, Clock, Edit2, Save, Layers, Radio } from 'lucide-react';
+import { Users, Trophy, Calendar, Shield, Plus, Search, Trash2, X, Image as ImageIcon, CheckCircle, AlertTriangle, MapPin, Clock, Edit2, Save, Layers, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CUSTOM UI COMPONENTS ---
-
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden ${className}`}>
     {children}
@@ -50,17 +49,14 @@ const Input = ({ className = "", ...props }) => (
   />
 );
 
-// --- MAIN DASHBOARD COMPONENT ---
-
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [matches, setMatches] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Track URL query parameters for dynamic filter tracking
   const { search } = useLocation();
   const queryParams = new URLSearchParams(search);
-  const currentFilter = queryParams.get("filter"); // "upcoming" | "live" | null
+  const currentFilter = queryParams.get("filter"); 
   
   const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -81,7 +77,6 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Sync edit form fields when a new event row is clicked
   useEffect(() => {
     if (selectedMatchDetails) {
       setEditForm({
@@ -106,7 +101,6 @@ export default function AdminDashboard() {
     try {
       const res = await axios.get("http://localhost:5000/api/matches/all");
       setMatches(res.data || []);
-      
       if (selectedMatchDetails) {
         const currentTarget = res.data.find(m => m._id === selectedMatchDetails._id);
         if (currentTarget) setSelectedMatchDetails(currentTarget);
@@ -122,7 +116,6 @@ export default function AdminDashboard() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    
     const userId = localStorage.getItem("userId") || "mock_admin_id_123";
     const token = localStorage.getItem("token") || "mock_token_abc";
 
@@ -149,15 +142,7 @@ export default function AdminDashboard() {
 
       setIsModalOpen(false);
       setSelectedFile(null);
-      setNewMatch({ 
-        title: '', 
-        sport: 'Cricket', 
-        venueLocation: '', 
-        time: '', 
-        date: '', 
-        maxPlayers: 10 
-      });
-      
+      setNewMatch({ title: '', sport: 'Cricket', venueLocation: '', time: '', date: '', maxPlayers: 10 });
       fetchData(); 
       showNotification("Tournament feed launched successfully!", "success");
     } catch (err) {
@@ -169,7 +154,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.put(`http://localhost:5000/api/matches/${selectedMatchDetails._id}`, editForm, {
+      await axios.put(`http://localhost:5000/api/matches/${selectedMatchDetails._id}`, editForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setIsEditing(false);
@@ -196,16 +181,10 @@ export default function AdminDashboard() {
   };
 
   const todayStart = new Date().setHours(0, 0, 0, 0);
-
   const upcomingMatches = matches.filter(m => m.date && new Date(m.date).setHours(0, 0, 0, 0) > todayStart);
   const liveMatches = matches.filter(m => m.date && new Date(m.date).setHours(0, 0, 0, 0) === todayStart);
 
-  const baseFilteredList = currentFilter === 'upcoming' 
-    ? upcomingMatches 
-    : currentFilter === 'live' 
-    ? liveMatches 
-    : matches;
-
+  const baseFilteredList = currentFilter === 'upcoming' ? upcomingMatches : currentFilter === 'live' ? liveMatches : matches;
   const filteredMatches = baseFilteredList.filter(m => 
     m.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     m.sportType?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -235,7 +214,7 @@ export default function AdminDashboard() {
         </AnimatePresence>
       </div>
 
-      {/* HEADER SECTION */}
+      {/* HEADER CONTROLS VIEW */}
       <header className="bg-white border-b sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -285,9 +264,6 @@ export default function AdminDashboard() {
                     {!currentFilter && <Layers className="w-5 h-5 text-cyan-600" />}
                     {currentFilter === 'upcoming' ? "Upcoming Schedule" : currentFilter === 'live' ? "Live Dashboard" : "Live Tournament Control"}
                   </CardTitle>
-                  <p className="text-[9px] font-bold text-cyan-600 uppercase tracking-wider mt-1">
-                    Viewing: {currentFilter === 'upcoming' ? "Upcoming Schedule" : currentFilter === 'live' ? "Live Matches" : "All Records"}
-                  </p>
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase">{filteredMatches.length} Displayed</p>
               </CardHeader>
@@ -311,10 +287,7 @@ export default function AdminDashboard() {
 
                           return (
                             <tr key={m._id} 
-                              onClick={(e) => {
-                                e.preventDefault(); 
-                                setSelectedMatchDetails(m);
-                              }}
+                              onClick={() => setSelectedMatchDetails(m)}
                               className={`hover:bg-slate-50/80 transition-all cursor-pointer group ${selectedMatchDetails?._id === m._id ? 'bg-cyan-50/40 border-l-4 border-l-cyan-600' : ''}`}
                             >
                               <td className="px-8 py-6">
@@ -369,10 +342,10 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* RIGHT DETAILS PANEL: DYNAMIC VIEW OR INLINE EDITING MANAGEMENT */}
+          {/* RIGHT DETAILS SIDEBAR PANEL */}
           <AnimatePresence>
             {selectedMatchDetails && (
-              <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="lg:col-span-1">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 15 }} className="lg:col-span-1">
                 <Card className="border-cyan-600/20 shadow-md sticky top-28">
                   <div className="relative h-40 bg-slate-900">
                     {selectedMatchDetails.image && selectedMatchDetails.image !== "default-sports.jpg" ? (
@@ -392,7 +365,6 @@ export default function AdminDashboard() {
 
                   <CardContent className="p-8 space-y-6">
                     {isEditing ? (
-                      // INLINE ADMINISTRATIVE EDIT FORM
                       <form onSubmit={handleUpdateEvent} className="space-y-4">
                         <div>
                           <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Edit Event Title</label>
@@ -417,22 +389,16 @@ export default function AdminDashboard() {
                           <Input type="number" value={editForm.maxPlayers} onChange={e => setEditForm({...editForm, maxPlayers: Number(e.target.value)})} required />
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-2">
-                          <Button type="button" variant="outline" className="w-full text-center justify-center py-3.5" onClick={() => setIsEditing(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" variant="cyan" className="w-full flex items-center justify-center gap-2 py-3.5">
-                            <Save className="w-3.5 h-3.5" /> Save
-                          </Button>
+                          <Button type="button" variant="outline" className="w-full text-center justify-center py-3.5" onClick={() => setIsEditing(false)}>Cancel</Button>
+                          <Button type="submit" variant="cyan" className="w-full flex items-center justify-center gap-2 py-3.5"><Save className="w-3.5 h-3.5" /> Save</Button>
                         </div>
                       </form>
                     ) : (
-                      // READ-ONLY DISPLAY METADATA
                       <>
                         <div>
                           <h3 className="text-xl font-black uppercase italic text-slate-900 tracking-tight leading-tight">{selectedMatchDetails.title}</h3>
                           <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-1">ID: #{selectedMatchDetails._id}</p>
                         </div>
-
                         <div className="space-y-3 border-y border-slate-50 py-4">
                           <div className="flex items-center gap-3 text-slate-600 text-xs font-semibold">
                             <MapPin className="w-4 h-4 text-cyan-600 flex-shrink-0" />
@@ -443,47 +409,18 @@ export default function AdminDashboard() {
                             <span>{selectedMatchDetails.date} {selectedMatchDetails.time ? `at ${selectedMatchDetails.time}` : ''}</span>
                           </div>
                         </div>
-
                         <div>
                           <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 mb-2">
                             <span>Squad Registry Fill</span>
-                            <span className="text-slate-700 font-black">{selectedMatchDetails.players?.length || 0} / {selectedMatchDetails.maxPlayers} Filled</span>
+                            <span>{selectedMatchDetails.players?.length || 0} / {selectedMatchDetails.maxPlayers} Filled</span>
                           </div>
                           <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-cyan-600 rounded-full transition-all duration-500" 
-                              style={{ width: `${Math.min(( (selectedMatchDetails.players?.length || 0) / selectedMatchDetails.maxPlayers) * 100, 100)}%` }}
-                            />
+                            <div className="h-full bg-cyan-600 rounded-full transition-all duration-500" style={{ width: `${Math.min(((selectedMatchDetails.players?.length || 0) / selectedMatchDetails.maxPlayers) * 100, 100)}%` }} />
                           </div>
                         </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                          <Button 
-                            variant="cyan" 
-                            className="w-full flex items-center justify-center gap-2 py-4" 
-                            onClick={() => setIsEditing(true)}
-                          >
-                            <Edit2 className="w-4 h-4" /> Edit Event Parameters
-                          </Button>
-                        </div>
-
-                        <div>
-                          <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3">Enrolled Users Stack</h4>
-                          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                            {selectedMatchDetails.players && selectedMatchDetails.players.length > 0 ? (
-                              selectedMatchDetails.players.map((p, index) => (
-                                <div key={index} className="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                                  <span className="text-xs font-bold text-slate-700">{p.name || `Competitor ${index + 1}`}</span>
-                                  <span className="text-[8px] font-black uppercase bg-slate-200/60 px-2 py-0.5 rounded text-slate-500">Confirmed</span>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="text-center py-6 border border-dashed rounded-xl border-slate-200 text-[10px] uppercase font-bold text-slate-400">
-                                Waiting for player check-ins.
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        <Button variant="cyan" className="w-full flex items-center justify-center gap-2 py-4" onClick={() => setIsEditing(true)}>
+                          <Edit2 className="w-4 h-4" /> Edit Event Parameters
+                        </Button>
                       </>
                     )}
                   </CardContent>
@@ -498,21 +435,14 @@ export default function AdminDashboard() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[40px] p-10 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
-            >
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900">
-                <X className="w-5 h-5" />
-              </button>
-
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[40px] p-10 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900"><X className="w-5 h-5" /></button>
               <h2 className="text-3xl font-black italic uppercase mb-2 text-slate-900">Launch <span className="text-cyan-600">Event</span></h2>
-              
               <form onSubmit={handleCreate} className="space-y-4 mt-6">
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Event Title</label>
                   <Input placeholder="Sunday Super League" required value={newMatch.title} onChange={e => setNewMatch({...newMatch, title: e.target.value})} />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Sport</label>
@@ -531,7 +461,6 @@ export default function AdminDashboard() {
                     <Input type="number" value={newMatch.maxPlayers} onChange={e => setNewMatch({...newMatch, maxPlayers: e.target.value})} />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Date</label>
@@ -542,14 +471,12 @@ export default function AdminDashboard() {
                     <Input type="time" required value={newMatch.time} onChange={e => setNewMatch({...newMatch, time: e.target.value})} />
                   </div>
                 </div>
-
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Venue Location</label>
                   <Input placeholder="City or Ground Name" required value={newMatch.venueLocation} onChange={e => setNewMatch({...newMatch, venueLocation: e.target.value})} />
                 </div>
-
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Upload Tournament Poster / Banner</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Upload Tournament Banner</label>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50 hover:bg-slate-100/50 transition-all relative cursor-pointer">
                     <div className="space-y-1 text-center">
                       <ImageIcon className="mx-auto h-10 w-10 text-slate-400" />
@@ -561,7 +488,6 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-
                 <Button type="submit" variant="cyan" className="w-full py-5 mt-4">Publish to Feed</Button>
               </form>
             </motion.div>
@@ -572,32 +498,19 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ title, value, icon: Icon, onClick, active = false, interactive = true, description = "" }) {
+function StatCard({ title, value, icon: Icon, onClick, active = false, interactive = true }) {
   return (
     <div 
       onClick={interactive ? onClick : undefined}
       className={`bg-white p-6 rounded-[28px] border shadow-sm flex items-center justify-between group transition-all ${
         interactive ? 'cursor-pointer select-none' : ''
-      } ${
-        active 
-          ? 'border-cyan-500 ring-2 ring-cyan-500/10 bg-cyan-50/10' 
-          : 'border-slate-100 hover:border-cyan-200'
-      }`}
+      } ${active ? 'border-cyan-500 ring-2 ring-cyan-500/10 bg-cyan-50/10' : 'border-slate-100 hover:border-cyan-200'}`}
     >
       <div>
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-        <p className={`text-3xl font-black italic tracking-tighter transition-colors ${
-          active ? 'text-cyan-600' : 'text-slate-900 group-hover:text-cyan-600'
-        }`}>{value}</p>
-        {description && (
-          <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-wider">{description}</p>
-        )}
+        <p className={`text-3xl font-black italic tracking-tighter transition-colors ${active ? 'text-cyan-600' : 'text-slate-900 group-hover:text-cyan-600'}`}>{value}</p>
       </div>
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-        active 
-          ? 'bg-cyan-600 text-white' 
-          : 'bg-slate-50 text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600'
-      }`}>
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${active ? 'bg-cyan-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600'}`}>
         <Icon className="w-6 h-6" />
       </div>
     </div>

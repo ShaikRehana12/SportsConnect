@@ -12,12 +12,12 @@ app.use(express.json());
 
 // 2. Import Routes
 const authRoutes = require('./routes/auth');
-const matchRoute = require("./routes/matches");
+const matchRoutes = require("./routes/matches");
 const tournamentRoutes = require('./routes/tournamentRoutes');
 
 // 3. Use Routes (Assign prefixes clearly)
 app.use('/api/auth', authRoutes);       // Handles Login, Register, Forgot Password
-app.use('/api/matches', matchRoute);    // Handles Match creation and feed
+app.use('/api/matches', matchRoutes);    // Handles Match creation and feed
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 4. Database Connection

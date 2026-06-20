@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Calendar, Clock, Users, ArrowLeft, Trophy, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -7,6 +7,8 @@ import { MapPin, Calendar, Clock, Users, ArrowLeft, Trophy, CheckCircle, AlertTr
 export default function MatchDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); 
+  
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
@@ -14,9 +16,11 @@ export default function MatchDetails() {
   // SUCCESS POPUP RECEIPT TICKET STATE
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Checks if the user arrived from the admin preview canvas pool
+  const isFromAdmin = location.state?.fromAdmin;
+
   // AUTH STATE EXTRACTIONS
   const username = localStorage.getItem("userName") || "";
-  // 🛠️ FIXED FALLBACK LOGIC: Fallback cleanly to userName if userId string is blank
   const userId = localStorage.getItem("userId") || localStorage.getItem("userName") || "";
   const isLoggedIn = username && username !== "Player";
 
@@ -27,7 +31,6 @@ export default function MatchDetails() {
   const fetchMatchDetails = async () => {
     try {
       const res = await axios.get(`http://localhost:5000/api/matches/all`);
-      // Find the specific item matching our URL ID parameter
       const found = res.data.find(m => m._id === id);
       setMatch(found);
     } catch (err) {
@@ -45,44 +48,36 @@ export default function MatchDetails() {
   
     setRegistering(true);
     try {
-      // 1. Submit registration packet payload straight to backend
       await axios.post(`http://localhost:5000/api/matches/${id}/register`, { userId });
-      
-      // 2. SUCCESS! Trigger ticket receipt visual modal display
       setShowSuccessModal(true);
-
-      // 3. INCREASES COUNT ON SCREEN LIVE: Refresh data behind popup instantly!
       fetchMatchDetails(); 
-
     } catch (err) {
-      // 🛠️ SILENT SYSTEM: Removed window browser error alert logs completely
       console.error("Registration failed silently:", err.response?.data?.error || err.message);
     } finally {
       setRegistering(false);
     }
   };
-useEffect(() => {
-  if (match) {
-    const hasJoined = match.players?.some(player => {
-      const pId = typeof player === 'object' ? player._id : player;
-      return String(pId) === String(userId) || String(player) === String(username);
-    });
 
-    // 🔄 REDIRECT LOGIC: Send ticket holders away from details to their upcoming itinerary layout
-    if (hasJoined) {
-      navigate("/upcoming-events"); // Or wherever your itinerary dashboard is mapped
+  useEffect(() => {
+    // CRITICAL: Prevent regular user itinerary redirect if inspecting as an admin
+    if (match && !isFromAdmin) {
+      const hasJoined = match.players?.some(player => {
+        const pId = typeof player === 'object' ? player._id : player;
+        return String(pId) === String(userId) || String(player) === String(username);
+      });
+
+      if (hasJoined) {
+        navigate("/upcoming-events"); 
+      }
     }
-  }
-}, [match, userId, username, navigate]);
-  // CANCEL SLOT / LEAVE MATCH HANDLER ENGINE
+  }, [match, userId, username, navigate, isFromAdmin]);
+
   const handleLeaveAction = async () => {
     if (!window.confirm("Are you sure you want to give up your spot for this match?")) return;
 
     setRegistering(true);
     try {
-      const res = await axios.post(`http://localhost:5000/api/matches/${id}/leave`, { userId });
-      
-      // Sync UI counter state live
+      await axios.post(`http://localhost:5000/api/matches/${id}/leave`, { userId });
       fetchMatchDetails();
     } catch (err) {
       console.error("Cancellation failed silently:", err.response?.data?.error || err.message);
@@ -91,7 +86,6 @@ useEffect(() => {
     }
   };
 
-  // Guard to prevent null crashes before data resolves
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -100,7 +94,6 @@ useEffect(() => {
     );
   }
 
-  // Validation fallback route guard if tournament tracking lookup parameter fails
   if (!match) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
@@ -114,7 +107,6 @@ useEffect(() => {
   const maxSlots = match.maxPlayers || 10;
   const isFull = currentJoined >= maxSlots;
   
-  // 🛠️ FIXED: Deep state structural array lookup engine evaluation logic
   const hasJoinedAlready = match.players?.some(player => {
     const pId = typeof player === 'object' ? player._id : player;
     return (
@@ -124,15 +116,28 @@ useEffect(() => {
     );
   });
 
-  // Calculate if the event date has already passed to restrict cancel visibility rules
   const isEventPast = new Date() > new Date(match.date);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pt-24 pb-12 p-6 md:p-12">
       <div className="max-w-3xl mx-auto space-y-6">
-        <button onClick={() => navigate("/feed")} className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-cyan-500 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Feed
-        </button>
+        
+        {/* 👑 ACCESSIBLE DYNAMIC BACK NAVIGATION BAR */}
+        {isFromAdmin ? (
+          <button 
+            onClick={() => navigate(-1)} // 👑 Using history back-track to completely avoid route mismatches
+            className="flex items-center gap-2 text-xs font-black uppercase text-cyan-600 hover:text-slate-900 transition-colors bg-transparent border-none outline-none cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Admin Preview
+          </button>
+        ) : (
+          <button 
+            onClick={() => navigate("/feed")} 
+            className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-cyan-500 transition-colors bg-transparent border-none outline-none cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Feed
+          </button>
+        )}
 
         <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
           <div className="relative h-64 bg-slate-900">
@@ -182,78 +187,47 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Dynamic Action State Engine Toggles */}
             {hasJoinedAlready ? (
               <button 
                 onClick={handleLeaveAction}
                 disabled={registering || isEventPast}
                 className={`w-full py-4 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-[0.98] ${
-                  isEventPast
-                    ? "bg-slate-300 cursor-not-allowed shadow-none"
-                    : "bg-red-500 hover:bg-red-600 shadow-red-100"
+                  isEventPast ? "bg-slate-300 cursor-not-allowed shadow-none" : "bg-red-500 hover:bg-red-600 shadow-red-100"
                 }`}
               >
-                {registering 
-                  ? 'Processing Cancellation...' 
-                  : isEventPast 
-                  ? 'Match Completed (Locked)' 
-                  : 'Cancel My Slot / Leave Match 🏃'}
+                {registering ? 'Processing Cancellation...' : isEventPast ? 'Match Completed (Locked)' : 'Cancel My Slot / Leave Match 🏃'}
               </button>
             ) : (
               <button 
                 onClick={handleRegisterAction}
                 disabled={registering || isFull}
                 className={`w-full py-4 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-[0.98] ${
-                  registering 
-                    ? "bg-slate-400 cursor-wait" 
-                    : isFull 
-                    ? "bg-red-100 border border-red-200 text-red-500 cursor-not-allowed shadow-none" 
-                    : "bg-slate-900 hover:bg-cyan-600"
+                  registering ? "bg-slate-400 cursor-wait" : isFull ? "bg-red-100 border border-red-200 text-red-500 cursor-not-allowed shadow-none" : "bg-slate-900 hover:bg-cyan-600"
                 }`}
               >
-                {registering 
-                  ? 'Securing Slot...' 
-                  : isFull 
-                  ? 'Bracket Fully Booked 🚫' 
-                  : match.entryFee > 0 
-                  ? `Pay ₹${match.entryFee} & Register` 
-                  : 'Secure My Spot Now'}
+                {registering ? 'Securing Slot...' : isFull ? 'Bracket Fully Booked 🚫' : match.entryFee > 0 ? `Pay ₹${match.entryFee} & Register` : 'Secure My Spot Now'}
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* SUCCESS POPUP TICKET MODAL COMPONENT VIEW */}
+      {/* SUCCESS POPUP TICKET MODAL */}
       <AnimatePresence>
         {showSuccessModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[45px] p-10 max-w-sm w-full text-center shadow-2xl relative overflow-hidden"
-            >
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white rounded-[45px] p-10 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
-              
               <div className="w-20 h-20 bg-green-50 text-green-500 border border-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-10 h-10" />
               </div>
-              
-              <h2 className="text-2xl font-black uppercase italic mb-2 text-slate-900">
-                Slot Locked <span className="text-cyan-500">In!</span>
-              </h2>
-              
-              <p className="text-slate-400 font-bold text-xs uppercase tracking-tight mb-8">
-                Your pass ticket has been securely locked down into the backend tournament roster!
-              </p>
+              <h2 className="text-2xl font-black uppercase italic mb-2 text-slate-900">Slot Locked <span className="text-cyan-500">In!</span></h2>
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-tight mb-8">Your pass ticket has been securely locked down into the backend tournament roster!</p>
 
               <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-6 mb-8 text-left relative">
                 <p className="text-[8px] font-black text-cyan-600 uppercase mb-4 tracking-widest">Official Entry Pass</p>
                 <h4 className="text-lg font-black text-slate-800 uppercase italic leading-tight mb-1">{match.title}</h4>
-                <p className="text-[10px] text-slate-500 font-bold mb-4 uppercase">
-                  {match.location} @ {match.time || "TBD"}
-                </p>
+                <p className="text-[10px] text-slate-500 font-bold mb-4 uppercase">{match.location} @ {match.time || "TBD"}</p>
                 <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
                   <p className="text-xs font-black uppercase text-slate-800">{username}</p>
                   <div className="w-8 h-8 bg-slate-200 rounded-md"></div>
@@ -263,11 +237,15 @@ useEffect(() => {
               <button 
                 onClick={() => {
                   setShowSuccessModal(false);
-                  navigate("/feed");
+                  if (isFromAdmin) {
+                    navigate(-1);
+                  } else {
+                    navigate("/feed");
+                  }
                 }} 
                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-cyan-600 transition-colors"
               >
-                Return To Match Feed
+                {isFromAdmin ? "Return To Admin Preview" : "Return To Match Feed"}
               </button>
             </motion.div>
           </div>
