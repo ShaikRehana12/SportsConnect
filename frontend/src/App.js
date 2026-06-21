@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
-import AdminNavbar from "./components/AdminNavbar"; 
 import MatchDetails from "./pages/MatchDetails"; 
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -50,8 +49,7 @@ function ProtectedRoute({ children, requireAdmin = false }) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. 🛠️ REPAIRED: Robust validation evaluation check for verification statuses.
-  // This handles string "false", boolean false, and unassigned null/undefined states cleanly.
+  // 2. Robust validation evaluation check for verification statuses.
   if (authState.isVerified === "false" || authState.isVerified === false) {
     return <Navigate to="/login" replace />;
   }
@@ -65,21 +63,11 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   return children;
 }
 
-// --- DYNAMIC NAVIGATION WRAPPER COMPONENT ---
-function NavigationWrapper() {
-  const location = useLocation();
-
-  if (location.pathname.startsWith("/admin")) {
-    return <AdminNavbar />;
-  }
-
-  return <Navbar />;
-}
-
 // --- DYNAMIC FOOTER WRAPPER COMPONENT ---
 function FooterWrapper() {
   const location = useLocation();
 
+  // Keep admin clean by suppressing standard footer layouts on administrative pages
   if (location.pathname.startsWith("/admin")) {
     return null;
   }
@@ -90,7 +78,8 @@ function FooterWrapper() {
 function App() {
   return (
     <Router>
-      <NavigationWrapper /> 
+      {/* 🚀 THE FIX: Mount your single unified, dynamic role-recalculating navbar directly */}
+      <Navbar /> 
       
       <div className="min-h-screen"> 
         <Routes>

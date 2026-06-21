@@ -64,8 +64,8 @@ function Footer() {
             </div>
             <div className="flex items-center space-x-3">
               <span className="text-cyan-400">📧</span>
-              <a href="mailto:support@sportsconnect.com" className="hover:text-white transition underline decoration-cyan-500 underline-offset-4">
-                support@sportsconnect.com
+              <a href="mailto:sportsconnectteamindia@gmail.com" className="hover:text-white transition underline decoration-cyan-500 underline-offset-4">
+                sportsconnectteamindia@gmail.com
               </a>
             </div>
             <div className="flex items-center space-x-3">

@@ -14,12 +14,16 @@ exports.createMatch = async (req, res) => {
     const newMatch = await Match.create(req.body);
     console.log(`🎰 Match Created Successfully ID: ${newMatch._id}`);
 
-    const { sport, location, maxPlayers, date, time } = newMatch;
+    // Standardize fields with strict backups so variables can never be undefined
+    const sport = newMatch.sport ? newMatch.sport.trim() : "Sports";
+    const location = newMatch.location ? newMatch.location.trim() : "Hyderabad";
+    const date = newMatch.date || "2026-06-30";
+    const time = newMatch.time || "17:00";
+    const maxPlayers = newMatch.maxPlayers || 10;
+    const matchTitle = req.body.title || `${sport}-Championship`;
 
-    // Create a safe case-insensitive regex for the sport selection
-    const sportRegex = new RegExp(`^${sport.trim()}$`, 'i');
-    
-    // Extract city name safely (e.g., "Gachibowli, Hyderabad" -> "Hyderabad")
+    // Create safe case-insensitive regex selectors
+    const sportRegex = new RegExp(`^${sport}$`, 'i');
     const cleanCity = location.includes(',') ? location.split(',').pop().trim() : location.trim();
     const cityRegex = new RegExp(`^${cleanCity}$`, 'i'); 
 
@@ -36,9 +40,9 @@ exports.createMatch = async (req, res) => {
     if (targetedUsers.length > 0) {
       const emailPromises = targetedUsers.map(user => {
         const displayUsername = user.username || 'Player';
-        const displayMaxPlayers = maxPlayers || 10;
+        const userCity = user.city || cleanCity;
 
-        // 🌟 RESTORED: EXACT PRETTY CYAN HTML BOX BRANDING DESIGN
+        // 🌟 FORCE HTML STRUCTURE ONLY - NO PLAIN TEXT FALLBACK PROPERTY
         return transporter.sendMail({
           from: '"Sports Connect 🏆" <sportsconnectteamindia@gmail.com>', 
           to: user.email,
@@ -61,11 +65,11 @@ exports.createMatch = async (req, res) => {
                     <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fafafa; border-left: 4px solid #06b6d4; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
                       <tr>
                         <td>
-                          <h3 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 15px 0; text-transform: capitalize;">${sport}-Championship</h3>
+                          <h3 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 15px 0; text-transform: capitalize;">${matchTitle}</h3>
                           <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">📍</span><strong>Venue Location:</strong> ${location}</p>
                           <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">📅</span><strong>Scheduled Date:</strong> ${date}</p>
                           <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">⏰</span><strong>Timing Slot:</strong> ${time}</p>
-                          <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">👥</span><strong>Player Cap Limit:</strong> Max ${displayMaxPlayers} Players</p>
+                          <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">👥</span><strong>Player Cap Limit:</strong> Max ${maxPlayers} Players</p>
                           <p style="font-size: 13px; color: #334155; margin: 8px 0;"><span style="margin-right: 6px;">💰</span><strong>Entry Fee:</strong> <span style="color: #06b6d4; font-weight: bold;">FREE</span></p>
                         </td>
                       </tr>
@@ -79,7 +83,7 @@ exports.createMatch = async (req, res) => {
                     </table>
                     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0 20px 0;" />
                     <p style="font-size: 11px; color: #64748b; text-align: center; margin: 0; line-height: 1.5;">
-                      You received this automated notification because you listed "${sport}" inside your SportsConnect profile preferences for ${cleanCity}.
+                      You received this automated notification because you listed "${sport}" inside your SportsConnect profile preferences for ${userCity}.
                     </p>
                     <p style="font-size: 12px; font-weight: bold; color: #06b6d4; text-align: center; margin: 8px 0 0 0;">
                       SportsConnect Team India
@@ -92,7 +96,7 @@ exports.createMatch = async (req, res) => {
         });
       });
       await Promise.all(emailPromises);
-      console.log("✅ Beautiful layout alerts broadcast successfully!");
+      console.log("✅ Beautiful HTML alerts broadcast successfully!");
     }
 
     res.status(201).json({ success: true, data: newMatch });
@@ -119,7 +123,7 @@ exports.registerMatch = async (req, res) => {
       return res.status(404).json({ success: false, message: "Match not found" });
     }
 
-    // 🔍 STEP 1: RESOLVE THE USER DOCUMENT
+    // 🔍 RESOLVE USER PROFILE USING EITHER USERNAME OR OBJECT ID
     let playerProfile = null;
     if (userId.toString().match(/^[0-9a-fA-F]{24}$/)) {
       playerProfile = await User.findById(userId);
@@ -132,22 +136,22 @@ exports.registerMatch = async (req, res) => {
       return res.status(444).json({ success: false, message: "Profile does not exist inside our collection." });
     }
 
-    // 🔍 STEP 2: PREVENT DUPLICATES USING TRUE MONGOOSE OBJECTID
+    // 🔍 PREVENT DUPLICATE SLOT BOOKINGS
     const isAlreadyRegistered = match.players.some(p => p && p.toString() === playerProfile._id.toString());
     if (isAlreadyRegistered) {
       return res.status(400).json({ success: false, message: "You have already secured a slot!" });
     }
 
-    // 🔍 STEP 3: PUSH OBJECTID AND SAVE
+    // 🔍 PUSH VALID OBJECT ID TO PLAYERS ARRAY
     match.players.push(playerProfile._id);
     if (match.players.length >= match.maxPlayers) {
       match.status = 'full';
     }
     await match.save();
 
-    console.log(`🎟️ Slot Locked! Forwarding custom themed digital pass pass to: ${playerProfile.email}`);
+    console.log(`🎟️ Slot Locked! Forwarding ticket pass layout to: ${playerProfile.email}`);
     
-    // Send ticket email
+    // Dispatch ticket email pass directly
     await sendTicketEmail(playerProfile.email, playerProfile.username, match);
 
     res.status(200).json({ success: true, data: match });
