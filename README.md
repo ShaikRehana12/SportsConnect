@@ -28,11 +28,11 @@ Sports Connect is a full-stack web application designed to bridge the gap betwee
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** React, React Router v6, Tailwind CSS
-* **Backend:** Node.js, Express.js, MongoDB / Mongoose (or your SQL framework equivalent)
-* **Authentication:** JSON Web Tokens (JWT), LocalStorage, HTML5 Web Storage API, bcryptjs
-* **Assets & Design:** Custom modern visual branding utilizing a minimalist Cyan and White design matrix
-
+* **Frontend:** React.js, React Router v6, Tailwind CSS
+* **Backend:** Node.js, Express.js
+* **Database:** MongoDB, Mongoose ODM
+* **Authentication & Security:** JSON Web Tokens (JWT), Bcrypt.js (Password Hashing)
+* **Mailing Integration:** Nodemailer / SendGrid
 ---
 
 ## 📦 Installation & Setup
