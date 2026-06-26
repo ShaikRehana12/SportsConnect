@@ -22,6 +22,7 @@ Sports Connect is a full-stack web application designed to bridge the gap betwee
 * **Unified Navbar Architecture:** A single, role-aware navigation component that dynamically restructures links based on authenticated roles.
 * **Dynamic Auth & State Synchronization:** Utilizes custom cross-tab lifecycle event hooks and local storage synchronization to ensure real-time authentication updates.
 * **Global Protection Guards:** Advanced React routing middleware preventing unauthorized admin panel access and enforcing mandatory account verification states.
+* **Automated Email Notification System:** Integrated an asynchronous background mailing service to transmit secure account verification tokens and deliver transactional match pass confirmations instantly to users.
 
 ---
 
