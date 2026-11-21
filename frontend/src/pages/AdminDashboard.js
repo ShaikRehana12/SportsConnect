@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from "../apiClient";
 import { Users, Trophy, Calendar, Shield, Plus, Search, Trash2, X, Image as ImageIcon, CheckCircle, AlertTriangle, MapPin, Clock, Edit2, Save, Layers, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/matches/all");
+      const res = await apiClient.get("/api/matches/all");
       setMatches(res.data || []);
       if (selectedMatchDetails) {
         const currentTarget = res.data.find(m => m._id === selectedMatchDetails._id);
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/matches/create", formData, {
+      await apiClient.post("/api/matches/create", formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data" 
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const token = sessionStorage.getItem("token");
     try {
-      await axios.put(`http://localhost:5000/api/matches/${selectedMatchDetails._id}`, editForm, {
+      await apiClient.put(`/api/matches/${selectedMatchDetails._id}`, editForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setIsEditing(false);
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
     e.stopPropagation(); 
     const token = sessionStorage.getItem("token");
     try {
-      await axios.delete(`http://localhost:5000/api/matches/${id}`, {
+      await apiClient.delete(`/api/matches/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (selectedMatchDetails?._id === id) setSelectedMatchDetails(null);

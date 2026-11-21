@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 function ResetPassword() {
@@ -20,7 +20,7 @@ function ResetPassword() {
     }
 
     try {
-      await axios.post(`http://localhost:5000/api/auth/update-password`, {
+      await apiClient.post("/api/auth/update-password", {
         userId,
         newPassword
       });

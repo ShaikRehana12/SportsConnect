@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { Calendar, MapPin, ArrowLeft, Image as ImageIcon, Trash2, Trophy, X, ShieldCheck, QrCode, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,7 +20,7 @@ export default function UpcomingEvents() {
 
   const fetchMyEvents = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/matches/all");
+      const res = await apiClient.get("/api/matches/all");
       const allMatches = res.data || [];
       
       // Filter matches where this user is active in the players list
@@ -65,8 +65,8 @@ export default function UpcomingEvents() {
     try {
       const token = sessionStorage.getItem("token");
       
-      await axios.post(
-        `http://localhost:5000/api/matches/${matchId}/unregister`,
+      await apiClient.post(
+        `/api/matches/${matchId}/unregister`,
         { userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

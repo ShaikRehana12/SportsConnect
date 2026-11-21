@@ -2,6 +2,7 @@ const Match = require('../models/Match');
 const User = require('../models/User');
 const transporter = require('../utils/mailer'); 
 const sendTicketEmail = require('../utils/sendTicketEmail'); 
+const { frontendUrl } = require('../utils/deploymentUrls');
 
 // ==========================================
 // 1. CREATE MATCH & NOTIFY INTERESTED USERS
@@ -44,7 +45,7 @@ exports.createMatch = async (req, res) => {
 
         // 🌟 FORCE HTML STRUCTURE ONLY - NO PLAIN TEXT FALLBACK PROPERTY
         return transporter.sendMail({
-          from: '"Sports Connect 🏆" <sportsconnectteamindia@gmail.com>', 
+          from: process.env.SMTP_FROM || process.env.SMTP_USER,
           to: user.email,
           subject: `New ${sport} Match Alert in ${cleanCity}! 🚀`,
           html: `
@@ -77,7 +78,7 @@ exports.createMatch = async (req, res) => {
                     <table width="100%" border="0" cellpadding="0" cellspacing="0">
                       <tr>
                         <td align="center">
-                          <a href="http://localhost:3000/feed" style="display: inline-block; background-color: #06b6d4; color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">View & Register Now</a>
+                          <a href="${frontendUrl}/feed" style="display: inline-block; background-color: #06b6d4; color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">View & Register Now</a>
                         </td>
                       </tr>
                     </table>

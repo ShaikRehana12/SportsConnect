@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Clock, Trophy, Users, CheckCircle, ArrowLeft, X } from "lucide-react";
 
@@ -18,7 +18,7 @@ function TournamentDetails() {
   // Function to pull match details from backend (isolated so we can re-invoke it on changes)
   const fetchMatchDetails = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/matches/all`);
+      const res = await apiClient.get("/api/matches/all");
       const foundMatch = res.data.find((m) => m._id === id);
       setMatch(foundMatch);
     } catch (err) {
@@ -35,7 +35,7 @@ function TournamentDetails() {
   const handleFinalRegister = async () => {
     setRegistering(true);
     try {
-      await axios.post(`http://localhost:5000/api/matches/${id}/register`, { userId });
+      await apiClient.post(`/api/matches/${id}/register`, { userId });
       setShowSuccessModal(true);
       fetchMatchDetails(); // Synchronize layout instantly
     } catch (err) {
@@ -60,8 +60,8 @@ function TournamentDetails() {
     setRegistering(true);
     try {
       const token = sessionStorage.getItem("token");
-      await axios.post(
-        `http://localhost:5000/api/matches/leave/${id}`,
+      await apiClient.post(
+        `/api/matches/leave/${id}`,
         { userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

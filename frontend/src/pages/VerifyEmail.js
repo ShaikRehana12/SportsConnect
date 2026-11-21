@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from "../apiClient";
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 
@@ -22,7 +22,7 @@ export default function VerifyEmail() {
       }
 
       try {
-        const res = await axios.get(`http://localhost:5000/api/auth/verify-email?token=${token}`);
+        const res = await apiClient.get(`/api/auth/verify-email?token=${encodeURIComponent(token)}`);
         
         setStatus('success');
         setMessage(res.data.message || "Email address verified successfully!");

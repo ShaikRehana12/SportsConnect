@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { MapPin, Calendar, Trophy, Sparkles, Image as ImageIcon, ChevronRight, AlertTriangle } from "lucide-react";
 
 function Dashboard() {
@@ -34,7 +34,7 @@ function Dashboard() {
     // 3. Fetch live matches from backend
     const fetchMatches = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/matches/all");
+        const res = await apiClient.get("/api/matches/all");
         setMatches(res.data || []);
       } catch (err) {
         console.error("Error fetching matches:", err);

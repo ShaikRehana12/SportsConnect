@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import apiClient from "../apiClient";
 
 function ResendVerification() {
   const [email, setEmail] = useState("");
@@ -14,7 +14,7 @@ function ResendVerification() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/resend-verification", { email });
+      const response = await apiClient.post("/api/auth/resend-verification", { email });
       setMessage(response.data.message);
       setEmail(""); // Clear field on success
     } catch (err) {

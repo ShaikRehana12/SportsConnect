@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from "../apiClient";
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Calendar, Clock, Users, ArrowLeft, Trophy, CheckCircle, AlertTriangle } from 'lucide-react';
 
@@ -30,7 +30,7 @@ export default function MatchDetails() {
 
   const fetchMatchDetails = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/matches/all`);
+      const res = await apiClient.get("/api/matches/all");
       const found = res.data.find(m => m._id === id);
       setMatch(found);
     } catch (err) {
@@ -48,7 +48,7 @@ export default function MatchDetails() {
   
     setRegistering(true);
     try {
-      await axios.post(`http://localhost:5000/api/matches/${id}/register`, { userId });
+      await apiClient.post(`/api/matches/${id}/register`, { userId });
       setShowSuccessModal(true);
       fetchMatchDetails(); 
     } catch (err) {
@@ -77,7 +77,7 @@ export default function MatchDetails() {
 
     setRegistering(true);
     try {
-      await axios.post(`http://localhost:5000/api/matches/${id}/leave`, { userId });
+      await apiClient.post(`/api/matches/${id}/leave`, { userId });
       fetchMatchDetails();
     } catch (err) {
       console.error("Cancellation failed silently:", err.response?.data?.error || err.message);

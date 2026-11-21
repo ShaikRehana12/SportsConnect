@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 function Login() {
@@ -17,7 +17,7 @@ function Login() {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
+      const response = await apiClient.post("/api/auth/login", {
         email,
         password,
       });

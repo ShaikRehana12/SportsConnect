@@ -9,7 +9,23 @@ require('dotenv').config();
 const app = express();
 
 // 1. Middleware (MUST be at the very top before any routes)
-app.use(cors());
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.FRONTEND_URL ||
+  'http://localhost:3000'
+)
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  }
+}));
 app.use(express.json());
 
 // 2. Import Routes

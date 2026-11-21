@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Clock, Calendar, Trophy, History, Zap, ShieldAlert, X, Sparkles, Award } from "lucide-react";
@@ -22,7 +22,7 @@ function Feed() {
 
   const fetchMatches = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/matches/all");
+      const res = await apiClient.get("/api/matches/all");
       setMatches(res.data || []);
     } catch (err) {
       console.error("Error fetching matches", err);

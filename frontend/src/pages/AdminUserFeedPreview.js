@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient from "../apiClient";
 import { Link } from "react-router-dom";
 import { MapPin, Calendar, Users, Trophy, Search, ChevronRight, Image as ImageIcon, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -16,7 +16,7 @@ export default function Feed() {
   useEffect(() => {
     const fetchFeedData = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/matches/all");
+        const res = await apiClient.get("/api/matches/all");
         setMatches(res.data || []);
       } catch (err) {
         console.error("Error fetching client match stream:", err);

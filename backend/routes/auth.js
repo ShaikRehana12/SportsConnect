@@ -3,8 +3,12 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const transporter = require('../utils/mailer');
+const { frontendUrl } = require('../utils/deploymentUrls');
 
-const JWT_SECRET = "yourSecretKey"; 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET must be set in the backend environment.");
+}
 
 // =========================================================
 // 1. USER REGISTER ENDPOINT
@@ -43,10 +47,10 @@ router.post('/register', async (req, res) => {
                 { expiresIn: "24h" } 
             );
 
-            const verificationUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
+            const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
             const mailOptions = {
-                from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>',
+                from: process.env.SMTP_FROM || process.env.SMTP_USER,
                 to: user.email,
                 subject: "Welcome to SportsConnect! Verify Your Account 🚀",
                 html: `
@@ -109,10 +113,10 @@ router.post("/resend-verification", async (req, res) => {
             { expiresIn: "24h" }
         );
 
-        const verificationUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
+        const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
         const mailOptions = {
-            from: '"SportsConnect 🏆" <sportsconnectteamindia.app@gmail.com>',
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
             to: user.email,
             subject: "Verify Your SportsConnect Account 🚀",
             html: `

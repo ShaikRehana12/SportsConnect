@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../apiClient";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -10,10 +10,7 @@ function ForgotPassword() {
   const handleReset = async (e) => {
     e.preventDefault();
     try {
-      // This calls the backend to send the reset email
-    //   await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
-      // ✅ CORRECT: Using .post
-await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
+      await apiClient.post("/api/auth/forgot-password", { email });
       setMessage("Check your inbox! A reset link has been sent.");
     } catch (err) {
       setMessage("Error: User not found or server issue.");

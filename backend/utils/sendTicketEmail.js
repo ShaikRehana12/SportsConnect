@@ -69,7 +69,7 @@ const sendTicketEmail = async (userEmail, userName, matchDetails) => {
     `;
 
     await transporter.sendMail({
-      from: '"Sports Connect 🏆" <sportsconnectteamindia@gmail.com>',
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: userEmail,
       subject: `🎟️ Roster Ticket Secured: ${eventTitle}`,
       html: htmlContent, 

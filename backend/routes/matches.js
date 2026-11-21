@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const Tournament = require("../models/Tournament"); 
 const User = require("../models/User"); 
+const { frontendUrl, backendUrl } = require("../utils/deploymentUrls");
 
 // 👑 CONNECT TO YOUR VERIFIED HARDCODED TRANSPORTER
 const transporter = require("../utils/mailer"); 
@@ -63,7 +64,7 @@ const sendTicketEmail = async (userEmail, userName, tournamentDetails) => {
     `;
 
     const mailOptions = {
-      from: '"SportsConnect 🏆" <sportsconnectteamindia@gmail.com>',
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: userEmail,
       subject: `🎟️ Roster Ticket Secured: ${tournamentDetails.title}`,
       html: htmlContent,
@@ -102,7 +103,7 @@ router.post("/create", upload.single("file"), async (req, res) => {
 
     let fileLocationUrl = "default-sports.jpg";
     if (req.file) {
-      fileLocationUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+      fileLocationUrl = `${backendUrl}/uploads/${req.file.filename}`;
     }
 
     const newTournament = new Tournament({
@@ -139,7 +140,7 @@ router.post("/create", upload.single("file"), async (req, res) => {
           const userCity = user.city || cleanCity;
 
           transporter.sendMail({
-            from: '"Sports Connect 🏆" <sportsconnectteamindia@gmail.com>', 
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
             to: user.email,
             subject: `New ${sport} Match Alert in ${cleanCity}! 🚀`,
             html: `
@@ -172,7 +173,7 @@ router.post("/create", upload.single("file"), async (req, res) => {
                       <table width="100%" border="0" cellpadding="0" cellspacing="0">
                         <tr>
                           <td align="center">
-                            <a href="http://localhost:3000/feed" style="display: inline-block; background-color: #06b6d4; color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">View & Register Now</a>
+                            <a href="${frontendUrl}/feed" style="display: inline-block; background-color: #06b6d4; color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">View & Register Now</a>
                           </td>
                         </tr>
                       </table>
