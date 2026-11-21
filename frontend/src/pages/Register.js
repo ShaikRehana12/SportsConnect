@@ -57,9 +57,9 @@ function Register() {
       );
 
       if (res.data) {
-        localStorage.setItem("userName", formData.name);
-        localStorage.setItem("userCity", formData.city);
-        localStorage.setItem("userInterests", JSON.stringify(interests));
+        sessionStorage.setItem("userName", formData.name);
+        sessionStorage.setItem("userCity", formData.city);
+        sessionStorage.setItem("userInterests", JSON.stringify(interests));
 
         setIsSuccess(true);
         setTimeout(() => {

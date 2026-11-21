@@ -25,16 +25,16 @@ function Login() {
       const data = response?.data || {};
 
       // Save standard fields safely
-      localStorage.setItem("token", data.token || "");
-      localStorage.setItem("userName", data.username || "");
-      localStorage.setItem("userRole", data.role || "user");
-      localStorage.setItem("userCity", data.city || "Hyderabad");
-      localStorage.setItem("userInterests", JSON.stringify(data.interests || []));
+      sessionStorage.setItem("token", data.token || "");
+      sessionStorage.setItem("userName", data.username || "");
+      sessionStorage.setItem("userRole", data.role || "user");
+      sessionStorage.setItem("userCity", data.city || "Hyderabad");
+      sessionStorage.setItem("userInterests", JSON.stringify(data.interests || []));
       
       // 🛠️ BACKEND FALLBACK SYSTEM: Since backend doesn't send an ID,
       // we will use the username string as a reliable fallback identifier
       const fallbackId = data.userId || data._id || data.username || "";
-      localStorage.setItem("userId", fallbackId);
+      sessionStorage.setItem("userId", fallbackId);
 
       // Trigger navbar state sync
       window.dispatchEvent(new Event("authChange"));

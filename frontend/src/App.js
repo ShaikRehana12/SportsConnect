@@ -25,17 +25,17 @@ import AdminUserFeedPreviewPage from "./pages/AdminUserFeedPreview";
 // --- GLOBAL PROTECTION GUARD COMPONENT ---
 function ProtectedRoute({ children, requireAdmin = false }) {
   const [authState, setAuthState] = useState({
-    token: localStorage.getItem("token"),
-    isVerified: localStorage.getItem("isVerified"),
-    role: localStorage.getItem("userRole")
+    token: sessionStorage.getItem("token"),
+    isVerified: sessionStorage.getItem("isVerified"),
+    role: sessionStorage.getItem("userRole")
   });
 
   useEffect(() => {
     const handleAuthSync = () => {
       setAuthState({
-        token: localStorage.getItem("token"),
-        isVerified: localStorage.getItem("isVerified"),
-        role: localStorage.getItem("userRole")
+        token: sessionStorage.getItem("token"),
+        isVerified: sessionStorage.getItem("isVerified"),
+        role: sessionStorage.getItem("userRole")
       });
     };
 

@@ -116,8 +116,8 @@ export default function AdminDashboard() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    const userId = localStorage.getItem("userId") || "mock_admin_id_123";
-    const token = localStorage.getItem("token") || "mock_token_abc";
+    const userId = sessionStorage.getItem("userId") || "mock_admin_id_123";
+    const token = sessionStorage.getItem("token") || "mock_token_abc";
 
     const formData = new FormData();
     formData.append("title", newMatch.title);
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
 
   const handleUpdateEvent = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       await axios.put(`http://localhost:5000/api/matches/${selectedMatchDetails._id}`, editForm, {
         headers: { Authorization: `Bearer ${token}` }
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
 
   const handleDelete = async (e, id) => {
     e.stopPropagation(); 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       await axios.delete(`http://localhost:5000/api/matches/${id}`, {
         headers: { Authorization: `Bearer ${token}` }

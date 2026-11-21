@@ -20,8 +20,8 @@ export default function MatchDetails() {
   const isFromAdmin = location.state?.fromAdmin;
 
   // AUTH STATE EXTRACTIONS
-  const username = localStorage.getItem("userName") || "";
-  const userId = localStorage.getItem("userId") || localStorage.getItem("userName") || "";
+  const username = sessionStorage.getItem("userName") || "";
+  const userId = sessionStorage.getItem("userId") || sessionStorage.getItem("userName") || "";
   const isLoggedIn = username && username !== "Player";
 
   useEffect(() => {

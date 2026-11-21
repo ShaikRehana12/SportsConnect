@@ -15,8 +15,8 @@ export default function UpcomingEvents() {
 
   const navigate = useNavigate();
 
-  const username = localStorage.getItem("userName") || "Player Athlete";
-  const userId = localStorage.getItem("userId") || localStorage.getItem("_id") || "";
+  const username = sessionStorage.getItem("userName") || "Player Athlete";
+  const userId = sessionStorage.getItem("userId") || sessionStorage.getItem("_id") || "";
 
   const fetchMyEvents = async () => {
     try {
@@ -63,7 +63,7 @@ export default function UpcomingEvents() {
     }
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       
       await axios.post(
         `http://localhost:5000/api/matches/${matchId}/unregister`,

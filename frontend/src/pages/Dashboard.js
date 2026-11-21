@@ -13,10 +13,10 @@ function Dashboard() {
 
   // Unified state synchronization function
   const syncAuthState = () => {
-    const savedInterests = JSON.parse(localStorage.getItem("userInterests") || "[]");
+    const savedInterests = JSON.parse(sessionStorage.getItem("userInterests") || "[]");
     setUserInterests(savedInterests);
 
-    const verifiedStatus = localStorage.getItem("isVerified");
+    const verifiedStatus = sessionStorage.getItem("isVerified");
     if (verifiedStatus === "false") {
       setIsVerified(false);
     } else {
@@ -28,8 +28,7 @@ function Dashboard() {
     // 1. Initial State Sync
     syncAuthState();
 
-    // 2. Cross-Component and Cross-Tab Listeners
-    window.addEventListener("storage", syncAuthState);
+    // 2. Cross-component authentication updates within this tab
     window.addEventListener("authChange", syncAuthState);
 
     // 3. Fetch live matches from backend
@@ -47,7 +46,6 @@ function Dashboard() {
     fetchMatches();
 
     return () => {
-      window.removeEventListener("storage", syncAuthState);
       window.removeEventListener("authChange", syncAuthState);
     };
   }, []);

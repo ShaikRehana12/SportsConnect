@@ -12,8 +12,8 @@ function TournamentDetails() {
   const [registering, setRegistering] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const username = localStorage.getItem("userName") || "Player";
-  const userId = localStorage.getItem("userId") || username;
+  const username = sessionStorage.getItem("userName") || "Player";
+  const userId = sessionStorage.getItem("userId") || username;
 
   // Function to pull match details from backend (isolated so we can re-invoke it on changes)
   const fetchMatchDetails = async () => {
@@ -59,7 +59,7 @@ function TournamentDetails() {
 
     setRegistering(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
         `http://localhost:5000/api/matches/leave/${id}`,
         { userId },

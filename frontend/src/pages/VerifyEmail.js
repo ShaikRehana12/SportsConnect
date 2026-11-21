@@ -28,13 +28,13 @@ export default function VerifyEmail() {
         setMessage(res.data.message || "Email address verified successfully!");
         
         // Update browser storage status immediately upon verification success
-        localStorage.setItem("isVerified", "true");
+        sessionStorage.setItem("isVerified", "true");
         
         // 🔥 NEW FIX: Force a global auth status reload across layout headers
         window.dispatchEvent(new Event("authChange"));
         
         setTimeout(() => {
-          const userToken = localStorage.getItem("token");
+          const userToken = sessionStorage.getItem("token");
           if (userToken) {
             navigate('/feed');
           } else {

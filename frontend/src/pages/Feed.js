@@ -14,7 +14,7 @@ function Feed() {
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
 
   const navigate = useNavigate();
-  const username = localStorage.getItem("userName") || "";
+  const username = sessionStorage.getItem("userName") || "";
 
   useEffect(() => {
     fetchMatches();

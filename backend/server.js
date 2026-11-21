@@ -1,3 +1,5 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -7,8 +9,8 @@ require('dotenv').config();
 const app = express();
 
 // 1. Middleware (MUST be at the very top before any routes)
-app.use(cors()); 
-app.use(express.json()); 
+app.use(cors());
+app.use(express.json());
 
 // 2. Import Routes
 const authRoutes = require('./routes/auth');

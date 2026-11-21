@@ -11,8 +11,8 @@ function Navbar() {
 
   // Fetches current authentication state from memory instantly
   const checkUser = () => {
-    const savedName = localStorage.getItem("userName");
-    const savedRole = localStorage.getItem("userRole"); 
+    const savedName = sessionStorage.getItem("userName");
+    const savedRole = sessionStorage.getItem("userRole"); 
     setUsername(savedName || "");
     setRole(savedRole || "");
   };
@@ -23,18 +23,16 @@ function Navbar() {
 
     const handleAuthUpdate = () => checkUser();
 
-    // Cross-tab and immediate component lifecycle event sync hooks
-    window.addEventListener("storage", handleAuthUpdate);
+    // Keep navbar updates scoped to this tab.
     window.addEventListener("authChange", handleAuthUpdate); 
 
     return () => {
-      window.removeEventListener("storage", handleAuthUpdate);
       window.removeEventListener("authChange", handleAuthUpdate);
     };
   }, []); 
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     window.dispatchEvent(new Event("authChange")); 
     navigate("/login");
   };

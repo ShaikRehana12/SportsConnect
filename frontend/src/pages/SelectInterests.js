@@ -20,8 +20,7 @@ function SelectInterests() {
       alert("Please select at least one sport!");
       return;
     }
-    // Save to localStorage so the app knows interests are set
-    localStorage.setItem("userInterests", JSON.stringify(selectedSports));
+    sessionStorage.setItem("userInterests", JSON.stringify(selectedSports));
     navigate("/feed"); // Send them to the feed after picking
   };
 
